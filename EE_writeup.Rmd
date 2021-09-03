@@ -1,0 +1,420 @@
+---
+title: 'Expert Elicitation in Support of the Spectacled Eider (*Somateria fischeri*) Population Viability Analysis '
+author: "Erik Osnas and Catherine Bradley"
+date: '`r format(Sys.time(), "%d %B, %Y")`'
+linkcolor: 3498DB
+output:
+  pdf_document:
+    fig_height: 3
+    fig_width: 5
+  word_document: default
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+```
+
+## Introduction
+We developed an integrated population model-population viability analysis (IPM-PVA; see accompanying appendix) to support the discussion of the current status and future resilience of spectacled eider (*Somateria fischeri*) populations in the Yukon-Kuskokwim Delta (YKD) and Arctic Coastal Plain (ACP) in a Species Status Assessment (Smith et al. 2018). Several parameters in the model required expert elicitation to derive informed priors, as there is no data currently available to inform their estimates. We followed the IDEA protocol outlined in [Hemmings et al. (2018)](https://doi.org/10.1111/2041-210X.12857) to gather the necessary quantitative data. Seven experts with a collective breadth of knowledge in sea duck ecology, particularly of eiders, and in demographic modeling began the exercise and five ultimately completed all steps. We developed ten questions concerning survival differences between the YKD and ACP populations, juvenile and adult local dispersal, winter sea ice effects on breeding propensity, the carrying capacity of the YKD and ACP populations, two year old maturation probability, and count survey interannual variability within observers. Responses were aggregated, summarized, and presented to the experts for a group discussion focused on ensuring consistent interpretation of the questions posed and allowing experts to communicate information or research that informed individual responses with the rest of the group. No attempt at consensus was made. Following this discussion, experts were given a second opportunity to respond to the questions, if they felt that revision was warranted. This second round of responses were again aggregated, summarized, and, ultimately, used to develop informed priors for model parameters.
+
+Here we present the materials shared with the experts, questions used for elicitation, summaries of the final responses, and a discussion of how these responses were incorporated into the IPM-PVA.
+
+## Invitations
+Invitations were sent to 12 experts in sea duck ecology and/or demographic modeling. We aimed for a group composed of both individuals with deep knowledge of the Alaska populations of spectacled eiders and individuals that could provide diverse perspectives, grounded in a strong background of relevant experience. The invitation included the purpose of the exercise, a brief description of the method we would employ, and an anticipated timeline. Seven individuals agreed to participate in the initial round.
+
+## Questions and Instructions
+Questions were provided to the experts with instructions to use any research, knowledge, or experiences to inform their answers, but to answer the questions independently of one another. For each question, respondents were asked to give a minimum plausible value, maximum plausible value, most likely plausible value, and their confidence in the interval containing the true value. Participants had the option to abstain from answering a question if they felt they could not provide an informed response. For illustrative purposes, an example question and answer set was given.
+
+Question syntax changed slightly between the first round and second round of responses, following discussion of the intent of each question. For clarity, we present the final question set here. 
+
+### Q1: Adult mean survival probability on the Arctic Coastal Plain (ACP)
+As a reminder, the Arctic Coastal Plain (ACP) and Yukon-Kuskokwim Delta (YKD) spectacled eiders are separate breeding populations that winter in the same area. We have mark-recapture data from Kigigak Island during 1992 - 2015 to inform estimated survival probabilities for the population of adult spectacled eiders breeding on the YKD. Kigigak Island is a small island (about 8 km across and 32 km2) that represents about 5% of the core breeding area on the YKD. No such dataset exists for the ACP population. For the purposes of this question, adults are at least 3 years old. Our best estimate of mean annual adult apparent survival on Kigigak Island is 0.88 (95% CI: 0.82 - 0.92). Assuming there is no movement between the breeding populations, what is the mean annual adult true survival for the breeding population on the ACP? (domain [0,1])
+
+### Q2: Juvenile mean survival probability on the Arctic Coastal Plain (ACP)
+As a reminder, the Arctic Coastal Plain (ACP) and Yukon-Kuskokwim Delta (YKD) spectacled eiders are separate breeding populations that winter in the same area. We have mark-recapture data from Kigigak Island during 1992 - 2015 to inform estimated survival probabilities for juveniles in the population of spectacled eiders breeding on the YKD.  Kigigak Island is a small island (about 8 km across and 32 km2) that represents about 5% of the core breeding area on the YKD. No such dataset exists for the ACP population. For the purposes of this question, the juvenile period is from 40 days old to 1 year old. Our best estimate of mean juvenile apparent survival on Kigigak Island is 0.21 (95% CI: 0.14 - 0.29). Assuming there is no movement between the breeding populations, what is the mean juvenile true survival for the breeding population on the ACP? (domain [0,1])
+
+### Q3: Small-scale natal site dispersal
+The mark-recapture data that provides an estimate of juvenile spectacled eider apparent survival is from a study on Kigigak Island. Kigigak Island is a small island (about 8 km across and 32 km2) that represents  of the total Yukon-Kuskokwim Delta  that represents about 5% of the core breeding area on the YKD. What proportion of juveniles born on Kigigak Island may never return to the Island to breed but may breed elsewhere on the YKD? (domain: [0,1]) 
+
+### Q4: Small-scale breeding site dispersal
+The mark-recapture data that provides an estimate of adult spectacled eider apparent survival is from a study on Kigigak Island.  Kigigak Island is a small island (about 8 km across and 32 km2) that represents about 5% of the core breeding area on the YKD. What proportion of adults that breed on Kigigak Island may never return to the Island to breed but may breed elsewhere on the YKD? (domain: [0,1]) 
+
+### Q5: Effect of winter sea ice conditions on productivity
+The severity of the winter sea ice in the principal overwintering area south of St. Lawrence Island may impact the productivity of spectacled eiders in the following breeding season. Here, productivity refers to the per capita average annual production of fledglings (age 40 days). This could occur by influencing breeding propensity, nesting success, egg survival, clutch size, or duckling survival. We characterize the severity of the winter sea ice by the number of days during which the principal overwintering area is 95% or more ice-covered (extreme sea ice days). From 1988 - 2018 the average number of extreme sea ice days was 60 (SD = 25, range = 0 - 96). We will ask two questions to address any possible non-linearity in expert judgements of the effect of winter sea ice conditions on productivity.
+
+Assume that the average productivity of spectacled eiders, under average winter sea ice conditions, is 0.8 fledglings/breeding female. In a year with 85 extreme sea ice days (1 SD above the mean), what is the productivity following that winter? (domain [0, Inf])
+
+Assume that the average productivity of spectacled eiders, under average winter sea ice conditions, is 0.8 fledglings/breeding female. In a year with 35 sea ice days (1 SD below the mean), what is the productivity following that winter? (domain [0, Inf]) 
+
+### Q6: Maximum equilibrium population size of the YKD population
+Over the most recent 12 year period, estimates of the population size of breeding spectacled eiders on the YKD have been relatively stable around 15,000 birds. Assuming recent environmental conditions are maintained, what is the maximum equilibrium population size of breeding spectacled eiders on the YKD? (domain [0, Inf])
+
+### Q7: Maximum equilibrium population size of the ACP population
+Over the most recent 12 year period, estimates of the population size of breeding spectacled eiders on the ACP have been relatively stable around 7,000 birds. Assuming recent environmental conditions are maintained, what is the maximum equilibrium population size of breeding spectacled eiders on the ACP? (domain [0, Inf])
+
+### Q8: Breeding propensity of 2 year old females
+Female spectacled eiders may first attempt to breed at 2 years old. On average, what proportion of 2 year old females return to the breeding ground and attempt to breed? (domain [0,1])
+
+### Q9 Annual variation in aerial detection on the YKD
+Average detection probability of breeding pairs of eiders on the YKD from aerial surveys is approximately 0.50 across observers, eider densities, and years. On the YKD, detection probability is determined from the ratio of eider nests estimated from ground-based plot surveys to observed eiders from the air using the standard North American aerial waterfowl survey protocol. Considering all years and factors affecting the ratio of aerial observations to nests, how much could detection probability differ among years within the same observer? For example, if you believe that an observer's detection probability most likely varies by 0.10 and that it is 0.50 on average, you are stating that the observer's detection probability could most likely be between 0.40 and 0.60 in any given year. (domain: [0, 0.5]) 
+
+### Q10: Annual variation in aerial detection on the ACP
+Average detection probability of breeding pairs of eiders on the ACP from aerial surveys is approximately 0.75 when measured across three observers and years. Detection probability here is defined from a double observer mark-recapture experiment from two observers in the plane. Importantly for the ACP, detection is estimated as detection of birds and not nests. In all other respects the observation protocol is the same as for the YKD.  Considering all factors that could affect detection of eiders from the air on the ACP, how much could detection probability differ among years within the same observer? For example, if you believe that an observer's detection probability could vary by 0.10 and that it is 0.75 on average, you are stating that the observer's detection probability could be between 0.65 and 0.85. (domain: [0, 0.25])
+
+## Summarization and Discussion
+We reviewed the experts' first set of responses and followed up with those that chose values outside the domain provided or other minor issues that could be clarified before the group discussion (e.g., minimum value exceeding maximum value). Experts also made comments on some question syntax which gave us the opportunity to anticipate where language would need to be revised in the final question set and where there may be discrepancies in interpretation during the discussion.
+
+Expert responses were standardized such that responses provided 80% confidence intervals (Hemmings et al. 2018) and figures were produced showing each respondent's interval and the average interval across responses (e.g., below). These figures were shared with participants prior to a discussion where we stepped through each question, discussed its intent and any ambiguities, and allowed the experts to share how they arrived at their responses. The revised question set, provided above, was shared with the experts following the discussion, and they had an opportunity to change their responses, if desired.
+
+## Final Responses and Prior Development
+Five experts completed all stages of the expert elicitation. Below are the final response figures, where code names are used for the experts. For each solicited parameter, each individual's reponse, standardized to 80% confidence intervals, is shown in black and averaged responses for the most likely values (solid line) and bounds (dashed lines) are shown in red and indicated on the x-axis. Following each is a discussion of how this response was translated into a prior used in the IPM-PVA as well as any challenges that were encountered in doing so. We give a measure of central tendancy (mean or median) and the 80% confidence interval of the asserted prior to compare to those elicited from the experts. 
+
+```{r include = FALSE} 
+ee.dat <- read.csv("input_data/EERound2.csv", header = T)
+head(ee.dat)
+ee.dat$Question <- as.factor(ee.dat$Question)
+
+# create standardized 80% bounds using equations in Hemmings et al. (2018)
+s.CI <- 0.8
+ee.dat$Low80 <- ee.dat$Best - ((ee.dat$Best - ee.dat$Lowest)*(s.CI/ee.dat$Range))
+ee.dat$Hi80 <- ee.dat$Best + ((ee.dat$Highest - ee.dat$Best)*(s.CI/ee.dat$Range))
+# truncating where necessary
+ee.dat$Low80 <- ifelse(ee.dat$Low80 < ee.dat$LowerBound, ee.dat$LowerBound, ee.dat$Low80)
+ee.dat$Hi80 <- ifelse(ee.dat$Hi80 > ee.dat$UpperBound, ee.dat$UpperBound, ee.dat$Hi80)
+
+#logical to indicate whether or not the data should be included
+ee.dat$out <- ifelse(ee.dat$Round2==1,0,1)
+```
+### Q1: Adult mean survival probability on the Arctic Coastal Plain (ACP)
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q1 <- ee.dat[ee.dat$Question == 1 & ee.dat$out == 0,]
+Q1.Best <- round(mean(ee.Q1$Best, na.rm = T), 2)
+Q1.Low <- round(mean(ee.Q1$Low80, na.rm = T), 2)
+Q1.Hi <- round(mean(ee.Q1$Hi80, na.rm = T), 2)
+ggplot(ee.Q1, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q1.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q1.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q1.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q1.Best, Q1.Low, Q1.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Adult Mean Survival (ACP)") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+A beta(26, 3) prior for mean true adult survival, $\mu_{\phi_a}$, was asserted to reflect expert responses. This distribution has a mean of 0.90 (80% CI: 0.82-0.96), and is bounded by 0 and 1. Because this reflects true survival, adult breeding site dispersal, $\omega_A$, was not estimated in the model for the ACP.
+
+### Q2: Juvenile mean survival probability on the Arctic Coastal Plain (ACP)
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q2 <- ee.dat[ee.dat$Question == 2 & ee.dat$out == 0,]
+Q2.Best <- round(mean(ee.Q2$Best, na.rm = T), 2)
+Q2.Low <- round(mean(ee.Q2$Low80, na.rm = T), 2)
+Q2.Hi <- round(mean(ee.Q2$Hi80, na.rm = T), 2)
+ggplot(ee.Q2, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q2.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q2.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q2.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q2.Best, Q2.Low, Q2.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Juvenile Mean Survival (ACP)") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+A beta(2.3, 4) prior for mean true juvenile survival, $\mu_{\phi_0}$, was asserted to reflect expert responses. This distribution has a mean of 0.36, 80% bounds of 0.14 and 0.61, and is bounded by 0 and 1. As above, because this reflects true survival, natal site dispersal, $\omega_J$, was not estimated in the model for the ACP.
+
+### Q3: Small-scale natal site dispersal
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q3 <- ee.dat[ee.dat$Question == 3 & ee.dat$out == 0,]
+Q3.Best <- round(mean(ee.Q3$Best, na.rm = T), 2)
+Q3.Low <- round(mean(ee.Q3$Low80, na.rm = T), 2)
+Q3.Hi <- round(mean(ee.Q3$Hi80, na.rm = T), 2)
+ggplot(ee.Q3, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q3.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q3.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q3.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q3.Best, Q3.Low, Q3.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Juvenile Dispersal Rate") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+Because the tails of the elicited distribution were strongly asymmetrical, we interpreted the most likely value as a median. A beta(1, 9) prior for natal site dispersal, $\omega_J$, was asserted to reflect expert responses. This distribution has a median of 0.07, 80% bounds of 0.01 and 0.23, and is bounded by 0 and 1.
+
+### Q4: Small-scale breeding site dispersal
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q4 <- ee.dat[ee.dat$Question == 4  & ee.dat$out == 0,]
+Q4.Best <- round(mean(ee.Q4$Best, na.rm = T), 2)
+Q4.Low <- round(mean(ee.Q4$Low80, na.rm = T), 2)
+Q4.Hi <- round(mean(ee.Q4$Hi80, na.rm = T), 2)
+ggplot(ee.Q4, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q4.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q4.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q4.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q4.Best, Q4.Low, Q4.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Adult Dispersal Rate") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+Again, because the tails of the elicited distribution were strongly asymmetrical, we interpreted the most likely value as a median. A beta(1, 35) prior for natal site dispersal, $\omega_J$, was asserted to reflect expert responses. This distribution has a median of 0.02, 80% bounds of 0.003 and 0.06, and is bounded by 0 and 1.
+
+### Q5: Effect of winter sea ice conditions on productivity
+Assume that the average productivity of spectacled eiders, under average winter sea ice conditions, is 0.8 fledglings/breeding female. In a year with 85 extreme sea ice days (1 SD above the mean), what is the productivity following that winter? (domain [0, Inf])
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q5.1 <- ee.dat[ee.dat$Question == 5.1  & ee.dat$out == 0,]
+Q5.1.Best <- round(mean(ee.Q5.1$Best, na.rm = T), 2)
+Q5.1.Low <- round(mean(ee.Q5.1$Low80, na.rm = T), 2)
+Q5.1.Hi <- round(mean(ee.Q5.1$Hi80, na.rm = T), 2)
+ggplot(ee.Q5.1, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q5.1.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q5.1.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q5.1.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q5.1.Best, Q5.1.Low, Q5.1.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Productivity after 85 Ext Sea Ice Days") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+Assume that the average productivity of spectacled eiders, under average winter sea ice conditions, is 0.8 fledglings/breeding female. In a year with 35 sea ice days (1 SD below the mean), what is the productivity following that winter? (domain [0, Inf]) 
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q5.2 <- ee.dat[ee.dat$Question == 5.2 & ee.dat$out == 0,]
+Q5.2.Best <- round(mean(ee.Q5.2$Best, na.rm = T), 2)
+Q5.2.Low <- round(mean(ee.Q5.2$Low80, na.rm = T), 2)
+Q5.2.Hi <- round(mean(ee.Q5.2$Hi80, na.rm = T), 2)
+ggplot(ee.Q5.2, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q5.2.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q5.2.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q5.2.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q5.2.Best, Q5.2.Low, Q5.2.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Productivity after 35 Ext Sea Ice Days") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+Expert responses suggested that there was a non-linear response in productivity to winter extreme sea ice days. However, during the discussion, experts stated that they would expect this relationship to be borne out through a reduction in breeding propensity rather than in any loss in fecundity. This required the addition of a new parameter to the model, as the breeding propensity of adult females had been assumed to be 1.0, consistent with previous demographic models of spectacled eiders (e.g. Flint et al. 2016). Assuming breeding propensity was 0.9 in average winter conditions, the experts' responses suggested that it would decline 20%, or to 0.72 (80% CI: 0.46-0.96), in high ice conditions (85 days) and 13.75%, or to 0.78 (80% CI: 0.50-1.0), in low ice conditions (35 days). However, note that the confidence interval in these effects are wide and a positive effect of low (and high) sea ice conditions were considered possible.  
+
+We assumed a model with linear and quadratic effects of sea ice on the logit-linked breeding propensity. We then created a large grid of possible covariate values for the model, fit each possible model to the standardized sea ice data, and calculated the sum of the absolute error between the expected values of breeding propensity at 35, 60, and 85 days and the predicted value using each model. We selected the model with the lowest absolute error. For example, the model
+$$logit(BP) = 0.472 + 2.83*ice - 1.17*ice^2$$
+results in predicted breeding propensities of 0.77 with 35 extreme sea ice days, 0.90 with 60 extreme sea ice days, and 0.72 with 85 extreme sea ice days. This was repeated to generate a linear model of the lower and upper bounds of expected breeding propensity. Normal priors were asserted for the covariate values, truncating these distributions to reflect the upper and lower bounds
+$$ BP_0 ~ \sim Normal (0.472, 0.22) T(-0.77, 3.22)$$
+$$\beta_{BP,ice} ~ \sim Normal(2.83, 0.11)T(-1, 3)$$
+$$\beta_{BP,ice^2} ~ \sim Normal(-1.17, 0.69)T(-1.21, 0.33).$$
+Prior predictive plots demonstrate the uncertainty implied by these priors in the relationship between extreme sea ice days and breeding propensity. Below are 200 simulated curves using the priors specified above and observed extreme sea ice days from 1988-2018 and the RCP4.5 model-averaged expected extreme sea ice from 2019-2100 as the predictor.
+
+```{r echo = FALSE, out.width = "60%", fig.align="center"}
+ext.sea.ice <- read.csv("input_data/extreme.sea.ice.csv", header = T)
+ice.data <- ext.sea.ice[ext.sea.ice$year >= 1988 & ext.sea.ice$year <= 2100,]
+ice.data4.5 <- ifelse(is.na(ice.data$ice.obs), ice.data$ice.RCP4.5, 
+                      ice.data$ice.obs) 
+ice4.5 <- scale(ice.data4.5)
+
+set.seed(50)
+
+b0 <- rnorm(100000, .472, 2.15)
+b0 <- b0[b0 > -0.77 & b0 < 3.22]
+b0 <- sample(b0, 10000, replace = FALSE)
+b1 <- rnorm(100000, 2.83, 3)
+b1 <- b1[b1 > -1 & b1 < 3]
+b1 <- sample(b1, 10000, replace = FALSE)
+b2 <- rnorm(100000, -1.17, 1.2)
+b2 <- b2[b2 > -1.21 & b2 < 0.33]
+b2 <- sample(b2, 10000, replace = FALSE)
+
+BP4.5.sim <- matrix(NA, nrow = length(ice4.5), ncol = 200)
+
+for (i in 1:200){
+  for (j in 1:length(ice4.5)){
+    BP4.5.sim[j,i] <- plogis(b0[i] + b1[i]*ice4.5[j] + b2[i]*ice4.5[j]^2)
+  }
+}
+
+BP4.5.sim <- as.data.frame(BP4.5.sim)
+BP4.5.sim <- cbind(BP4.5.sim, ice.data4.5)
+
+BP4.5.sim <- BP4.5.sim %>%
+  gather(SimNo, BP, -ice.data4.5)
+
+ggplot(BP4.5.sim, aes(x = ice.data4.5, y = BP, col = SimNo)) +
+  geom_line() + 
+  labs(x = "Extreme Sea Ice Days", y = "Breeding Propensity") +
+  theme_classic() + 
+  theme(legend.position = "none") +
+  scale_color_manual(values = c(rep("black", 200)))
+
+```
+```{r include = FALSE}
+test4.5.hold35 <- rep(NA, 10000)
+
+test4.5 <- c((35-mean(ice.data4.5))/sd(ice.data4.5),
+             (60-mean(ice.data4.5))/sd(ice.data4.5),
+             (85-mean(ice.data4.5))/sd(ice.data4.5))
+
+for (i in 1:10000){
+  test4.5.hold35[i] <- plogis(b0[i] + b1[i]*test4.5[1] + b2[i]*test4.5[1]^2)
+}
+```
+Because future predictions in the IPM-PVA were made primarily at low extreme sea ice days, we prioritized fit to the expert elicited values at 35 days over fit at 85 days. Across a larger sample of 10,000 simulations from the priors, breeding propensity at 35 days is estimated to be `r round(quantile(test4.5.hold35, 0.5),2)` (80% CI: `r round(quantile(test4.5.hold35, 0.1),2)`-`r round(quantile(test4.5.hold35, 0.9),2)`) which is consistent with the elicited most plausible value and 80% CI range.
+
+### Q6: Maximum equilibrium population size of the YKD population
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q6 <- ee.dat[ee.dat$Question == 6  & ee.dat$out == 0,]
+Q6.Best <- round(mean(ee.Q6$Best, na.rm = T), 0)
+Q6.Low <- round(mean(ee.Q6$Low80, na.rm = T), 0)
+Q6.Hi <- round(mean(ee.Q6$Hi80, na.rm = T), 0)
+ggplot(ee.Q6, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q6.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q6.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q6.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q6.Best, Q6.Low, Q6.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Max Equil. Population Size (YKD)") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+The maximum equilibrium population size as elicited included males and females, so these values were first divided by two to fit the female-only population dynamics model used in the IPM-PVA. This contraint on population size was incorporated into the IPM-PVA by asserting negative linear density-dependence effects on survival and fecundity. Though modeled using different link functions, the logit and log, respectively, a simplifying assumption was that the effect size, on the link scale, was equal in the linear models for both survival and fecundity (i.e., the prior used in both linear models was the same).
+
+To derive the effect size needed to represent the elicited values of equilibrium population size, we built a deterministic population dynamics model based on the transition matrix, $\boldsymbol{A}$, presented in the accompanying appendix. This model was initiated using the same initial population size and structure assumed in the IPM-PVA and mean values of breeding propensity, survival, and fecundity were asserted. The population trajectory was simulated for 200 years under a variety of proposed density-dependence effect sizes and we identified effect sizes that resulted in equilibrium population sizes roughly equivalent to those proposed by the experts for the mean and 80% confidence interval bounds.
+
+For the YKD population, a density-dependence effect of 0.00032 resulted in a population stabilizing at approximately 20,000 females. A lower bound of approximately 8,500 females was achieved with an effect of size 0.00076 and an upper bound of approximately 37,500 females was obtained with an effect size of 0.00017.
+
+Standard probability distributions used to approximate small, non-negative values near zero such as the gamma or inverse-gamma were not able to represent these values well. However, the inverse of a log-Normal distribution with mean = 7.95 and standard deviation = 0.55 has a median value of 0.00036, lower 80% CI bound of 0.00018 and upper 80% CI bound of 0.00072. This prior was implemented in the IPM-PVA for the YKD population.  
+
+### Q7: Maximum equilibrium population size of the ACP population
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q7 <- ee.dat[ee.dat$Question == 7  & ee.dat$out == 0,]
+Q7.Best <- round(mean(ee.Q7$Best, na.rm = T), 0)
+Q7.Low <- round(mean(ee.Q7$Low80, na.rm = T), 0)
+Q7.Hi <- round(mean(ee.Q7$Hi80, na.rm = T), 0)
+ggplot(ee.Q7, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q7.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q7.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q7.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q7.Best, Q7.Low, Q7.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Max Equil. Population Size (ACP)") +
+  theme(axis.text = element_text(size = 10),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+
+For the ACP population, we used the same method to translate the elicited population size into a density-dependence parameter. A density-dependence effect of 0.00089 resulted in a population stabilizing at approximately 12,500 females. A lower bound of approximately 5,400 females was achieved with an effect of size 0.00208 and an upper bound of approximately 25,000 females was obtained with an effect size of 0.00044. Therefore, we used a gamma(3, 3300) that gave a mean of 0.00091 and standard deviation = 0.00053 has a median value of 0.00081, lower 80% CI bound of 0.00033 and upper 80% CI bound of 0.0016. This prior was implemented in the IPM-PVA for the ACP population.   
+
+### Q8: Breeding propensity of 2 year old females
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q8 <- ee.dat[ee.dat$Question == 8  & ee.dat$out == 0,]
+Q8.Best <- round(median(ee.Q8$Best, na.rm = T), 2)
+Q8.Low <- round(median(ee.Q8$Low80, na.rm = T), 2)
+Q8.Hi <- round(median(ee.Q8$Hi80, na.rm = T), 2)
+ggplot(ee.Q8, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q8.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q8.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q8.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q8.Best, Q8.Low, Q8.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Breeding Propensity 2YO") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+```
+To distinguish this parameter from adult breeding propensity (Q5), it was termed maturation probability, $\alpha$, in the IPM-PVA. An inv-gamma(7.1, 1.95), truncated at 1, was used to represent the expert elicitation. This distribution has a median of 0.29 (80% CI: 0.18-0.49).
+
+### Q9 Annual variation in aerial detection on the YKD
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q9 <- ee.dat[ee.dat$Question == 9 & ee.dat$out == 0,]
+Q9.Best <- round(mean(ee.Q9$Best, na.rm = T), 2)
+Q9.Low <- round(mean(ee.Q9$Low80, na.rm = T), 2)
+Q9.Hi <- round(mean(ee.Q9$Hi80, na.rm = T), 2)
+ggplot(ee.Q9, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q9.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q9.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q9.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q9.Best, Q9.Low, Q9.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Variation in Aerial Detection (YKD)") +
+  coord_flip() + 
+  theme(legend.position = "none",
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11))
+```
+There was some ambiguity in the interpretation of this quantity for the YKD and ACP. We elicited the quantity on the probability scale because we felt that would be easier to discuss and for the experts to express their professional judgement. This quantity, however, was implemented as the prior distribution for the standard deviation of the log of the difference between average detection and year-specific detection. Therefore, we simulated from various priors for the standard deviation of the log difference in detection and compared resultant distributions on the probability scale. We also assumed the deviation in year-specific detection was bounded to an absolute value of 0.5 for the YKD. Therefore, the year-specific deviation was simulated from a truncated normal distribution. For the YKD, we used  
+$$\sigma_d \sim Gamma(2, 13), $$
+$$d_t \sim Normal(0, \sigma_d)T(-0.69, 0.69),$$
+where $d_t$ is the log difference in detection from the average detection. Given the above prior and hyperprior, the distribution of detection deviation is as in the figure below.  
+
+```{r echo = FALSE, fig.align = "center"}
+sigma_d <- rgamma(10000, 2, 13)
+# hist(sigma_d)
+# mean(sigma_d)
+# quantile(sigma_d, probs=c(0.1, 0.2, 0.5, 0.8, 0.9))
+x <- rnorm(10000, 0, sigma_d)
+x <- x[x > -0.69 & x < 0.69]
+#hist(x)
+#hist(exp(x))
+hist(0.5*exp(x) - 0.5, probability = TRUE, xlab="Detection deviation", main="Histogram of detection variation")
+#sd(0.5*exp(x) - 0.5)
+q <- quantile(abs(0.5*exp(x) - 0.5), probs=c(0.1, 0.2, 0.5, 0.8, 0.9))
+```
+The above distribution gives a median of `r round(q[3], 2)` and 80% CI of `r round(q[1], 2)` - `r round(q[5], 2)` for the absolute value of the deviation. **This is significantly lower than that elicited. We will likely update this in future model versions.**
+
+
+### Q10: Annual variation in aerial detection on the ACP
+```{r echo = FALSE, warning = FALSE, fig.height = 4, out.width = "60%", fig.align="center"}
+ee.Q10 <- ee.dat[ee.dat$Question == 10  & ee.dat$out == 0,]
+Q10.Best <- round(mean(ee.Q10$Best, na.rm = T), 2)
+Q10.Low <- round(mean(ee.Q10$Low80, na.rm = T), 2)
+Q10.Hi <- round(mean(ee.Q10$Hi80, na.rm = T), 2)
+ggplot(ee.Q10, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q10.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q10.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q10.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(Q10.Best, Q10.Low, Q10.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Variation in Aerial Detection (ACP)") +
+  coord_flip() + 
+  theme(legend.position = "none",
+        axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11))
+```
+
+For the ACP, we used 
+$$\sigma_d \sim Gamma(1, 13), $$
+$$d_t \sim Normal(0, \sigma_d)T(-0.28, 0.28),$$
+where $d_t$ is the log difference in detection from the average detection. Given the above prior and hyperprior, the distribution of detection deviation is as in the figure below.  
+
+```{r echo=FALSE, fig.align = "center"}
+sigma_d <- rgamma(10000, 1, 13)
+# hist(sigma_d)
+# mean(sigma_d)
+# quantile(sigma_d, probs=c(0.1, 0.2, 0.5, 0.8, 0.9))
+x <- rnorm(10000, 0, sigma_d)
+x <- x[x > -0.28 & x < 0.28]
+#hist(x)
+#hist(exp(x))
+hist(0.75*exp(x) - 0.75, probability = TRUE, xlab="Detection deviation", main="Histogram of detection variation")
+#sd(0.5*exp(x) - 0.5)
+q <- quantile(abs(0.75*exp(x) - 0.75), probs=c(0.1, 0.2, 0.5, 0.8, 0.9))
+```
+The above distribution gives a median of `r round(q[3], 2)` and 80% CI of `r round(q[1], 2)` - `r round(q[5], 2)` for the absolute value of the deivation. **This is significantly lower than that elicited. We will likely update this in future model versions.**
