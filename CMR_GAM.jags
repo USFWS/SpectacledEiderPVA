@@ -1,0 +1,159 @@
+
+model {
+
+## Priors
+
+# survival and breeding propensity
+mean.alpha.inv ~ dgamma(7.1, 1.95) T(1,) # from EE
+mean.logit.alpha <- logit(1/mean.alpha.inv)
+
+mean.phi0 ~ dbeta(15,45) # from cjs model
+mean.logit.phi0 <- logit(mean.phi0)
+tau.phi0 <- pow(sigma.phi0, -2)
+sigma.phi0 ~ dgamma(1,2) #dunif(0, 1)
+
+mean.phiA ~ dbeta(90,10) # from cjs model
+tau.phiA <- pow(sigma.phiA, -2)
+sigma.phiA ~ dgamma(1, 2) #dunif(0, 1)
+
+mean.p ~ dbeta(1,1)
+mean.logit.p <- logit(mean.p)
+tau.p <- pow(sigma.p, -2)
+sigma.p ~ dgamma(1, 2) #dunif(0, 1)
+    
+betaN.inv ~ dgamma(100000, 1) # from EE
+betaN <- 1/betaN.inv # DD for phi and F
+
+beta.nest ~ dnorm(0, 100)
+
+## Multistate survival model
+# process model
+for (t in 1:(n.occasions-1)){
+nest[t] ~ dbeta(nest.obs.a[t], nest.obs.b[t])
+}
+
+nest.s <- (nest - mean(nest))/sd(nest)
+
+for (t in (1):(n.occasions-1)){
+   logit.p[t] <- mean.logit.p + beta.nest*nest.s[t] + eps.p[t]
+   eps.p[t] ~ dnorm(0, tau.p)
+   p[t] <- ilogit(logit.p[t])
+} # t
+###################################################
+##set up priors for GAM, basis dimention is K-1 = 9
+## prior for s(ice)... 
+K1 <- S1[1:9,1:9] * lambda[1]  + S1[1:9,10:18] * lambda[2]
+b[1:9] ~ dmnorm(bzero[1:9],K1) 
+## smoothing parameter priors CHECK...
+for (i in 1:2) {
+  lambda[i] ~ dgamma(.01,.001)
+}
+#GAM component of linear predictor
+#X is the ice design matrix without intercept
+eta <- X%*%b
+for (t in 1:(n.occasions - 1)){
+    logit.phi0[t] <- mean.logit.phi0 + eta[t+1] + eps.phi0[t] 
+    eps.phi0[t] ~ dnorm(0, tau.phi0)
+    phi0[t] <- ilogit(logit.phi0[t])
+    
+    logit.phiA[t] <- logit(mean.phiA) + eta[t+1] - betaN*(N[t]) + eps.phiA[t] #WHY IS ice at t+1 but N at t?
+    logit.phi2[t] <- logit(mean.phiA) + eta[t+1] - betaN*(N[t]) + eps.phiA[t]
+    eps.phiA[t] ~ dnorm(0, tau.phiA)
+    phiA[t] <- ilogit(logit.phiA[t])
+    phi2[t] <- ilogit(logit.phi2[t])
+    
+    phi1[t] <- phi2[t]
+    
+    logit.alpha[t] <- mean.logit.alpha
+    alpha[t] <- ilogit(logit.alpha[t])
+} # t
+
+for (t in 1:(n.occasions - 1)){
+  # state transition and reencounter probabilities
+  psi[1,t,1] <- 0
+  psi[1,t,2] <- phi0[t]
+  psi[1,t,3] <- 0
+  psi[1,t,4] <- 0
+  psi[1,t,5] <- 0
+  psi[2,t,1] <- 0
+  psi[2,t,2] <- 0
+  psi[2,t,3] <- phi1[t]*(1-alpha[t])
+  psi[2,t,4] <- phi1[t]*alpha[t]
+  psi[2,t,5] <- 0
+  psi[3,t,1] <- 0
+  psi[3,t,2] <- 0
+  psi[3,t,3] <- 0
+  psi[3,t,4] <- 0
+  psi[3,t,5] <- phi2[t]
+  psi[4,t,1] <- 0
+  psi[4,t,2] <- 0
+  psi[4,t,3] <- 0
+  psi[4,t,4] <- 0
+  psi[4,t,5] <- phiA[t]
+  psi[5,t,1] <- 0
+  psi[5,t,2] <- 0
+  psi[5,t,3] <- 0
+  psi[5,t,4] <- 0
+  psi[5,t,5] <- phiA[t]
+  po[1,t] <- 0
+  po[2,t] <- 0
+  po[3,t] <- 0
+  po[4,t] <- p[t]
+  po[5,t] <- p[t]
+  
+# non-encounter probabilities, dq, and reshape the array for the 
+  # encounter probabilities
+  for (s in 1:ns){
+    dp[s,t,s] <- po[s,t]
+    dq[s,t,s] <- 1-po[s,t]
+  } # s
+  for (s in 1:(ns-1)){
+    for (m in (s+1):ns){
+      dp[s,t,m] <- 0
+      dq[s,t,m] <- 0
+    } # m
+  } # s
+  for (s in 2:ns){
+    for (m in 1:(s-1)){
+      dp[s,t,m] <- 0
+      dq[s,t,m] <- 0
+    } # m
+  } # s
+} # t
+
+# multinomial likelihood
+for (t in 1:((n.occasions-1)*ns)){
+   marr[t,1:(n.occasions*ns-(ns-1))] ~ dmulti(pr[t,], rel[t])
+   } # t
+
+# Define the cell probabilities of the multistate m-array   
+# Define matrix U: product of probabilities of state-transition and non-encounter (this is just done because there is no product function for matrix multiplication in JAGS)
+for (t in 1:(n.occasions-2)){
+   U[(t-1)*ns+(1:ns), (t-1)*ns+(1:ns)] <- ones
+   for (j in (t+1):(n.occasions-1)){
+      U[(t-1)*ns+(1:ns), (j-1)*ns+(1:ns)] <- U[(t-1)*ns+(1:ns), (j-2)*ns+(1:ns)] %*% psi[,t,] %*% dq[,t,]
+      } # j
+   } # t
+U[(n.occasions-2)*ns+(1:ns), (n.occasions-2)*ns+(1:ns)] <- ones
+# Diagonal
+for (t in 1:(n.occasions-2)){
+   pr[(t-1)*ns+(1:ns),(t-1)*ns+(1:ns)] <- U[(t-1)*ns+(1:ns),(t-1)*ns+(1:ns)] %*% psi[,t,] %*% dp[,t,]
+   # Above main diagonal
+   for (j in (t+1):(n.occasions-1)){
+      pr[(t-1)*ns+(1:ns), (j-1)*ns+(1:ns)] <- U[(t-1)*ns+(1:ns), (j-1)*ns+(1:ns)] %*% psi[,j,] %*% dp[,j,]
+      } # j
+   } # t
+pr[(n.occasions-2)*ns+(1:ns), (n.occasions-2)*ns+(1:ns)] <- psi[,n.occasions-1,] %*% dp[,n.occasions-1,]
+
+# Below main diagonal
+for (t in 2:(n.occasions-1)){
+   for (j in 1:(t-1)){
+      pr[(t-1)*ns+(1:ns),(j-1)*ns+(1:ns)] <- zero
+      } #j
+   } #t
+
+# Last column: probability of non-recapture
+for (t in 1:((n.occasions-1)*ns)){
+   pr[t,(n.occasions*ns-(ns-1))] <- 1-sum(pr[t,1:((n.occasions-1)*ns)])
+   } #t
+}
