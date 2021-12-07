@@ -40,13 +40,16 @@ for (t in (1):(n.occasions-1)){
    p[t] <- ilogit(logit.p[t])
 } # t
 ###################################################
-##set up priors for GAM, basis dimention is K-1 = 9
+##set up priors for GAM, basis dimention is K-1 = 4 # also tried 9 with slow mixing, trying 4 because the efd ~ 2 in fitted model 
 ## prior for s(ice)... 
-K1 <- S1[1:9,1:9] * lambda[1]  + S1[1:9,10:18] * lambda[2]
-b[1:9] ~ dmnorm(bzero[1:9],K1) 
+K1 <- S1[1:4,1:4] * lambda[1]  + S1[1:4,5:8] * lambda[2]
+b[1:4] ~ dmnorm(bzero[1:4],K1) 
 ## smoothing parameter priors CHECK...
 for (i in 1:2) {
-  lambda[i] ~ dgamma(.01,.001)
+  lambda[i] ~ dgamma(0.05,0.005) #experimented with dgamma(0.05, 0.005), dgamma(0.01, 0.001), and dgamma(2, 0.01)
+  # latter seems necessary for quick converge when predicting (extrapolating) far beyond range of data (to 150 days ice free), 
+  # but is very informative and causes a very strong quadratic. Without extrapolating, the other prior seem fine and give
+  # less of a prefect quadratic. 
 }
 #GAM component of linear predictor
 #X is the ice design matrix without intercept

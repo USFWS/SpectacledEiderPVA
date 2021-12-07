@@ -68,6 +68,19 @@ max.ice <- (181 - mean(ice.data)) / sd(ice.data)  #max.ice is the upper bound on
 min.ice <- (0 - mean(ice.data)) / sd(ice.data)  #min.ice is the lower bound on the ice covariate
 ice.data <- (ice.data-mean(ice.data)) / sd(ice.data)
 
+#make data for GAM, transform ice covariate to cubic spline regression basis functions
+#get example file for IPM
+#ignore random effect
+#change data set to match IPM
+mu <- -0.1*ice.data^2 + rnorm(length(ice.data), 0, 0.1)
+y <- rbinom(length(ice.data), 1, prob=plogis(mu))
+df=data.frame(y=y, ice=ice.data)
+#augment data to include min and max value of ice covariate, this "sorta worked, hard to converge, 
+#strange behavior beyond range, lambda seen to reture prior
+#df=data.frame(y=c(y, 0, 0), ice=c(ice.data, min.ice, max.ice)) 
+#so basis functions span this range.
+gam.data <- mgcv::jagam(y~s(ice, k=5, bs='cr')-1, family=binomial, data = df, file="test_gam.txt")
+
 ### Lead Constant
 cat(file = "CMR_GAM.jags", "
 model {
@@ -111,13 +124,16 @@ for (t in (1):(n.occasions-1)){
    p[t] <- ilogit(logit.p[t])
 } # t
 ###################################################
-##set up priors for GAM, basis dimention is K-1 = 9
+##set up priors for GAM, basis dimention is K-1 = 4 # also tried 9 with slow mixing, trying 4 because the efd ~ 2 in fitted model 
 ## prior for s(ice)... 
-K1 <- S1[1:9,1:9] * lambda[1]  + S1[1:9,10:18] * lambda[2]
-b[1:9] ~ dmnorm(bzero[1:9],K1) 
+K1 <- S1[1:4,1:4] * lambda[1]  + S1[1:4,5:8] * lambda[2]
+b[1:4] ~ dmnorm(bzero[1:4],K1) 
 ## smoothing parameter priors CHECK...
 for (i in 1:2) {
-  lambda[i] ~ dgamma(.01,.001)
+  lambda[i] ~ dgamma(0.05,0.005) #experimented with dgamma(0.05, 0.005), dgamma(0.01, 0.001), and dgamma(2, 0.01)
+  # latter seems necessary for quick converge when predicting (extrapolating) far beyond range of data (to 150 days ice free), 
+  # but is very informative and causes a very strong quadratic. Without extrapolating, the other prior seem fine and give
+  # less of a prefect quadratic. 
 }
 #GAM component of linear predictor
 #X is the ice design matrix without intercept
@@ -230,15 +246,7 @@ for (t in 1:((n.occasions-1)*ns)){
 }
 ")
 
-#make data for GAM, transform ice covariate to cubic spline regression basis functions
-#get example file for IPM
-#ignore random effect
-#change data set to match IPM
-mu <- -0.1*ice.data^2 + rnorm(length(ice.data), 0, 0.1)
-y <- rbinom(length(ice.data), 1, prob=plogis(mu))
-df=data.frame(y=c(y, 0, 0), ice=c(ice.data, min.ice, max.ice)) #augment data to include min and max value of ice covariate, 
-                                                               #so basis functions span this range.
-gam.data <- mgcv::jagam(y~s(ice, k=10, bs='cr')-1, family=binomial, data = df, file="test_gam.txt")
+
 # bundle data
 jags.data <- list(ice = ice.data, 
                   X = gam.data$jags.data$X[1:25,],
@@ -262,7 +270,7 @@ parameters <- c("phiA", "phi0", "betaN", "b", "lambda", "beta.nest",
                 "mean.logit.alpha", "mean.phiA", "mean.phi0", "sigma.phi0", "sigma.phiA", "sigma.p")
 
 # MCMC settings
-ni <- 50000; nt <- 1; nb <- 10000; nc <- 4
+ni <- 10000; nt <- 1; nb <- 1000; nc <- 4
 
 # Call JAGS from R (jagsUI)
 out <- jags(jags.data, inits, parameters, "CMR_GAM.jags", 
@@ -279,7 +287,10 @@ out <- readRDS(file = "CMR.GAM.rds")
 lp <-  cbind(rep(1, dim(gam.data$pregam$X)[1]), gam.data$pregam$X) %*% 
   t(cbind(qlogis(out$sims.list$mean.phiA), out$sims.list$b))
 
-df <- data.frame(ice=c(ice.data, min.ice, max.ice), mlp = apply(lp, 1, mean), 
+# df <- data.frame(ice=c(ice.data, min.ice, max.ice), mlp = apply(lp, 1, mean),
+#                  upperlp = apply(lp, 1, quantile, probs=0.9),
+#                  lowerlp = apply(lp, 1, quantile, probs=0.1))
+df <- data.frame(ice=ice.data, mlp = apply(lp, 1, mean),
                  upperlp = apply(lp, 1, quantile, probs=0.9),
                  lowerlp = apply(lp, 1, quantile, probs=0.1))
 df <- arrange(df, ice)
