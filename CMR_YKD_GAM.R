@@ -300,14 +300,36 @@ gplot <- ggplot(data=df, aes(x=ice, y=mlp))+
   labs(x="Standardized ice", y="linear predictor for phiA")
 print(gplot)
 #now do this on the real scale
-lp <- plogis(lp)
-df <- data.frame(ice=jags.data$ice, mlp = apply(lp, 1, mean), 
+rlp <- plogis(lp)
+df <- data.frame(ice=jags.data$ice, mlp = apply(rlp, 1, mean), 
+                 upperlp = apply(rlp, 1, quantile, probs=0.9),
+                 lowerlp = apply(rlp, 1, quantile, probs=0.1))
+df <- arrange(df, ice)
+gplot <- ggplot(data=df, aes(x=ice, y=mlp))+
+  geom_ribbon(aes(x=ice, ymin=lowerlp, ymax=upperlp))+
+  geom_line()+
+  labs(x="Standardized ice", y="phiA", title="GAM for eider survival fit using JAGS")
+print(gplot)
+
+#Can the linear predictor for survival be scale to use as the lp for breeding propensity?
+#biased by using mean.phiA, also for above
+bp.parms <- c(2.24, 1) #0.34) #mean and sd for prior of BP intercept, 0.34 seems too small
+lp <-  cbind(rep(1, dim(gam.data$pregam$X)[1]), gam.data$pregam$X) %*% 
+  t(cbind(rnorm(dim(gam.data$pregam$X)[1], bp.parms[1], bp.parms[2]), out$sims.list$b)) #use prior intercept for BP
+df <- data.frame(ice=ice.data, mlp = apply(lp, 1, mean),
                  upperlp = apply(lp, 1, quantile, probs=0.9),
                  lowerlp = apply(lp, 1, quantile, probs=0.1))
 df <- arrange(df, ice)
 gplot <- ggplot(data=df, aes(x=ice, y=mlp))+
   geom_ribbon(aes(x=ice, ymin=lowerlp, ymax=upperlp))+
   geom_line()+
-  labs(x="Standardized ice", y="phiA", title="GAM for eider survival fit using JAGS")
+  labs(x="Standardized ice", y="linear predictor for BP")
+print(gplot)
+#Add EE data
+eedf = data.frame(ice = c(-1, 1), bp = qlogis(c(0.78, 0.72)), 
+                  low=qlogis(c(0.5, 0.46)), 
+                  high=qlogis(c(0.99, 0.96))) 
+gplot <- gplot + 
+  geom_pointrange(aes(x=ice, y=bp, ymin=low, ymax=high), data=eedf, color="orange")
 print(gplot)
 
