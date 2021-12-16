@@ -47,7 +47,7 @@ b[1:4] ~ dmnorm(bzero[1:4],K1)
 ## smoothing parameter priors CHECK...
 for (i in 1:2) {
   lambda[i] ~ dgamma(0.05,0.005) #experimented with dgamma(0.05, 0.005), dgamma(0.01, 0.001), and dgamma(2, 0.01)
-  # latter seems necessary for quick converge when predicting (extrapolating) far beyond range of data (to 150 days ice free), 
+  # latter seems necessary for quick convergence when predicting (extrapolating) far beyond range of data (to 150 days ice free), 
   # but is very informative and causes a very strong quadratic. Without extrapolating, the other prior seem fine and give
   # less of a prefect quadratic. 
 }

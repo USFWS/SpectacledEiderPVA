@@ -79,7 +79,7 @@ df=data.frame(y=y, ice=ice.data)
 #strange behavior beyond range, lambda seen to reture prior
 #df=data.frame(y=c(y, 0, 0), ice=c(ice.data, min.ice, max.ice)) 
 #so basis functions span this range.
-gam.data <- mgcv::jagam(y~s(ice, k=5, bs='cr')-1, family=binomial, data = df, file="test_gam.txt")
+gam.data <- mgcv::jagam(y~s(ice, k=5, bs='ps', m=c(2,2))-1, family=binomial, data = df, file="test_gam.txt")
 
 ### Lead Constant
 cat(file = "CMR_GAM.jags", "
@@ -131,7 +131,7 @@ b[1:4] ~ dmnorm(bzero[1:4],K1)
 ## smoothing parameter priors CHECK...
 for (i in 1:2) {
   lambda[i] ~ dgamma(0.05,0.005) #experimented with dgamma(0.05, 0.005), dgamma(0.01, 0.001), and dgamma(2, 0.01)
-  # latter seems necessary for quick converge when predicting (extrapolating) far beyond range of data (to 150 days ice free), 
+  # latter seems necessary for quick convergence when predicting (extrapolating) far beyond range of data (to 150 days ice free), 
   # but is very informative and causes a very strong quadratic. Without extrapolating, the other prior seem fine and give
   # less of a prefect quadratic. 
 }
@@ -311,7 +311,7 @@ gplot <- ggplot(data=df, aes(x=ice, y=mlp))+
   labs(x="Standardized ice", y="phiA", title="GAM for eider survival fit using JAGS")
 print(gplot)
 
-#Can the linear predictor for survival be scale to use as the lp for breeding propensity?
+#Can the linear predictor for survival be scaled to use as the lp for breeding propensity?
 #biased by using mean.phiA, also for above
 bp.parms <- c(2.24, 1) #0.34) #mean and sd for prior of BP intercept, 0.34 seems too small
 lp <-  cbind(rep(1, dim(gam.data$pregam$X)[1]), gam.data$pregam$X) %*% 
