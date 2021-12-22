@@ -502,7 +502,7 @@ text(0.2, 150, labels = bquote("percent sign" ==.(phiABPsign)))
 ```
 
 ## phi0 and F
-**INTERESTING!!**
+phi0 feeds into F
 
 ```{r}
 plot(post$phi0[1,]~post$F[1,], main = "Relationship between phi0 and F", bty = "l")
@@ -534,7 +534,7 @@ text(0.2, 100, labels = bquote("percent sign" ==.(phi0BPsign)))
 ```
 
 ## F and BP
-Pretty obvious, just doing this one for completeness.
+BP feeds into F
 
 ```{r}
 plot(post$F[1,]~post$BP[1,], main = "Relationship between F and BP", bty = "l")
