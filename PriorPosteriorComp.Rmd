@@ -141,6 +141,20 @@ abline(v = median(poster), col = "red", lwd = 2)
 legend("topright", legend = c("Prior", "Posterior"), lty = c(1,1),
        lwd = c(2,2), col = c("blue", "red"), bty = "n")
 ```
+Given the n.eff for these two parameters, is there non-identifiability between them?
+```{r}
+betaN1 <- post$betaN[hold,1]
+betaN2 <- post$betaN[hold,2]
+
+plot(betaN1~ betaN2)
+```
+Not really at all...What do the traceplots look like?
+```{r}
+traceplot(out, parameters = "betaN")
+```
+Traceplots look fine as well. https://github.com/kenkellner/jagsUI/issues/17: looks like it is 
+a consequence of the calculation of n.eff when the absolute value of the parameter is small. Option is to standardize input (in this case count) to adjust, but it doesn't appear to be any problem with convergence/estimation with these.
+
 
 # beta[1] ice effect on phi.A
 ## prior norm(0,100)
@@ -189,7 +203,24 @@ abline(v = median(poster), col = "red", lwd = 2)
 legend("topleft", legend = c("Prior", "Posterior"), lty = c(1,1),
        lwd = c(2,2), col = c("blue", "red"), bty = "n")
 ```
+this is counter to what EO found in exploring GAMS for these functions using the 
+CMR data only. Look at mean phiA ~ ice.
 
+```{r}
+ext.sea.ice <- read.csv("input_data/extreme.sea.ice.csv", header = T)
+# year is winter year (Nov - Apr)
+ice.data <- ext.sea.ice[ext.sea.ice$year >= 1988 & ext.sea.ice$year <= 2100,]
+ice.data4.5 <- ifelse(is.na(ice.data$ice.obs), ice.data$ice.RCP4.5, 
+                      ice.data$ice.obs)
+
+mean.phiA <- apply(post$phiA,2,mean)
+# entire time series
+plot(mean.phiA ~ ice.data4.5[-113])
+# observed time series, 1992 - 2015 (survival estimated for 1993 winter (92-93)
+# through 2015 winter (14-15)). that last one should be distinguishable from capture prob
+plot(mean.phiA[6:28] ~ ice.data4.5[6:28])
+
+```
 # beta[3] ice effect on phi.0
 ## prior norm(0,100)
 ```{r}
