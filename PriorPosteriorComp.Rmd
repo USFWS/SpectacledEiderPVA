@@ -141,19 +141,22 @@ abline(v = median(poster), col = "red", lwd = 2)
 legend("topright", legend = c("Prior", "Posterior"), lty = c(1,1),
        lwd = c(2,2), col = c("blue", "red"), bty = "n")
 ```
+
 Given the n.eff for these two parameters, is there non-identifiability between them?
+
 ```{r}
 betaN1 <- post$betaN[hold,1]
 betaN2 <- post$betaN[hold,2]
 
 plot(betaN1~ betaN2)
 ```
+
 Not really at all...What do the traceplots look like?
+
 ```{r}
 traceplot(out, parameters = "betaN")
 ```
-Traceplots look fine as well. https://github.com/kenkellner/jagsUI/issues/17: looks like it is 
-a consequence of the calculation of n.eff when the absolute value of the parameter is small. Option is to standardize input (in this case count) to adjust, but it doesn't appear to be any problem with convergence/estimation with these.
+Traceplots look fine as well. https://github.com/kenkellner/jagsUI/issues/17: looks like it is a consequence of the calculation of n.eff when the absolute value of the parameter is small. Option is to standardize input (in this case count) to adjust, but it doesn't appear to be any problem with convergence/estimation with these.
 
 
 # beta[1] ice effect on phi.A
@@ -203,6 +206,7 @@ abline(v = median(poster), col = "red", lwd = 2)
 legend("topleft", legend = c("Prior", "Posterior"), lty = c(1,1),
        lwd = c(2,2), col = c("blue", "red"), bty = "n")
 ```
+
 this is counter to what EO found in exploring GAMS for these functions using the 
 CMR data only. Look at mean phiA ~ ice.
 
@@ -212,15 +216,15 @@ ext.sea.ice <- read.csv("input_data/extreme.sea.ice.csv", header = T)
 ice.data <- ext.sea.ice[ext.sea.ice$year >= 1988 & ext.sea.ice$year <= 2100,]
 ice.data4.5 <- ifelse(is.na(ice.data$ice.obs), ice.data$ice.RCP4.5, 
                       ice.data$ice.obs)
+yearly.phiA <- apply(post$phiA,2,mean) # eider year 1993 - 2015
 
-mean.phiA <- apply(post$phiA,2,mean)
-# entire time series
-plot(mean.phiA ~ ice.data4.5[-113])
-# observed time series, 1992 - 2015 (survival estimated for 1993 winter (92-93)
-# through 2015 winter (14-15)). that last one should be distinguishable from capture prob
-plot(mean.phiA[6:28] ~ ice.data4.5[6:28])
+plot(yearly.phiA[5:27] ~ ice.data$ice.obs[6:28])
+plot(yearly.phiA ~ ice.data4.5[2:113])
 
 ```
+
+Over the observed period, it's exactly the same as obtained in the CJS-only model.
+
 # beta[3] ice effect on phi.0
 ## prior norm(0,100)
 ```{r}
@@ -475,6 +479,12 @@ abline(v = median(prior), col = "blue", lwd = 2)
 abline(v = median(poster), col = "red", lwd = 2)
 legend("topleft", legend = c("Prior", "Posterior"), lty = c(1,1),
        lwd = c(2,2), col = c("blue", "red"), bty = "n")
+```
+what does the relationship between yearly BP and ice look like (similar to 
+what we did above for phiA)
+```{r}
+yearly.BP <- apply(post$BP,2,mean)
+plot(yearly.BP ~ ice.data4.5[2:113])
 ```
 
 \newpage
