@@ -1,6 +1,8 @@
 library(ggplot2)
 
-ee.dat <- read.csv("input_data/EERound2.csv", header = T)
+# using EERound3 which includes additional responses from PF and DR on extreme
+# sea ice day effects on BP (0 days and 110 days)
+ee.dat <- read.csv("input_data/EERound3.csv", header = T)
 head(ee.dat)
 ee.dat$Question <- as.factor(ee.dat$Question)
 
@@ -115,6 +117,40 @@ ggplot(ee.Q5.2, aes(x = CodeName, y = Best)) +
   scale_y_continuous(breaks = c(.2, 2.5, Q5.2.Best, Q5.2.Low, Q5.2.Hi)) +
   labs(x = "Code names") + 
   labs(y = "Productivity after 35 Ext Sea Ice Days") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+
+# Q5.3
+ee.Q5.3 <- ee.dat[ee.dat$Question == 5.3 & ee.dat$out == 0,]
+Q5.3.Best <- round(mean(ee.Q5.3$Best, na.rm = T), 2)
+Q5.3.Low <- round(mean(ee.Q5.3$Low80, na.rm = T), 2)
+Q5.3.Hi <- round(mean(ee.Q5.3$Hi80, na.rm = T), 2)
+ggplot(ee.Q5.3, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q5.3.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q5.3.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q5.3.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(.2, 2.5, Q5.3.Best, Q5.3.Low, Q5.3.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Productivity after 0 Ext Sea Ice Days") +
+  theme(axis.text = element_text(size = 11),
+        axis.title = element_text(size = 11)) +
+  coord_flip()
+
+# Q5.4
+ee.Q5.4 <- ee.dat[ee.dat$Question == 5.4 & ee.dat$out == 0,]
+Q5.4.Best <- round(mean(ee.Q5.4$Best, na.rm = T), 2)
+Q5.4.Low <- round(mean(ee.Q5.4$Low80, na.rm = T), 2)
+Q5.4.Hi <- round(mean(ee.Q5.4$Hi80, na.rm = T), 2)
+ggplot(ee.Q5.4, aes(x = CodeName, y = Best)) + 
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) +
+  geom_hline(yintercept = Q5.4.Best, col = "red", alpha = 0.5) + 
+  geom_hline(yintercept = Q5.4.Low, col = "red", linetype = "dashed", alpha = 0.5) +
+  geom_hline(yintercept = Q5.4.Hi, col = "red", linetype = "dashed", alpha = 0.5) +
+  scale_y_continuous(breaks = c(.2, 2.5, Q5.4.Best, Q5.4.Low, Q5.4.Hi)) +
+  labs(x = "Code names") + 
+  labs(y = "Productivity after 110 Ext Sea Ice Days") +
   theme(axis.text = element_text(size = 11),
         axis.title = element_text(size = 11)) +
   coord_flip()
