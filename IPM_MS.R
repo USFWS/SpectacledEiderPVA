@@ -151,7 +151,7 @@ betaF.ice3 ~ dnorm(-0.66, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 203.1) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
@@ -450,7 +450,7 @@ betaF.ice3 ~ dnorm(-0.66, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 203.1) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
@@ -748,7 +748,7 @@ betaF.ice3 ~ dnorm(-0.6, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 203.1) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
@@ -1046,7 +1046,7 @@ betaF.ice3 ~ dnorm(-0.6, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 203.1) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity

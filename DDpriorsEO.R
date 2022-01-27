@@ -68,15 +68,15 @@ optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=5372)$minimum
 # [1] 0.0379043
 
 ##relate this to the EE for the YKD
-#high females = 37.5K
-optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=37500)$minimum
-# [1] 0.005429917
-#best  = 20K females
-optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=20000)$minimum
-# [1] 0.0101811
-#low = 8.5K  females
-optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=8500)$minimum
-# [1] 0.02395552
+#high females = 38294
+optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=38294)$minimum
+# [1] 0.005317332
+#best  = 19300 females
+optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=19300)$minimum
+# [1] 0.01055036
+#low = 8284  females
+optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=8284)$minimum
+# [1] 0.02458014
 
 
 #now find a distribution that matches the EE
@@ -109,17 +109,17 @@ qgamma(c(0.1, 0.5, 0.9), shape=fit$par[1], rate=fit$par[2])
 # [1] 0.006610512 0.017731524 0.037474102
 #YKD
 fit <- optim(par=c(3, 10000), fn=qmatch.gamma, method="L-BFGS-B", lower=c(1,1), 
-             eeq=c(0.005429917, 0.0101811, 0.02395552))
+             eeq=c(0.005317332, 0.01055036, 0.02458014))
 fit
 # $par
-# [1]   2.623867 203.060233
+# [1]   2.562276 193.844387
 # 
 # $value
-# [1] 265.7278
+# [1] 203.4094
 # 
 # $counts
 # function gradient 
-# 53       53 
+# 78       78 
 # 
 # $convergence
 # [1] 0
