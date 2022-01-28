@@ -1,4 +1,5 @@
 library(ggplot2)
+library(tidyverse)
 
 # using EERound3 which includes additional responses from PF and DR on extreme
 # sea ice day effects on BP (0 days and 110 days)
@@ -86,7 +87,6 @@ ggplot(ee.Q4, aes(x = CodeName, y = Best)) +
         axis.title = element_text(size = 11)) +
   coord_flip()
 
-
 # Q5.1
 ee.Q5.1 <- ee.dat[ee.dat$Question == 5.1  & ee.dat$out == 0,]
 Q5.1.Best <- round(mean(ee.Q5.1$Best, na.rm = T), 2)
@@ -154,6 +154,22 @@ ggplot(ee.Q5.4, aes(x = CodeName, y = Best)) +
   theme(axis.text = element_text(size = 11),
         axis.title = element_text(size = 11)) +
   coord_flip()
+
+# Q5 by respondent
+ee.Q5 <- ee.dat %>%
+  filter(Question == 5.1|Question == 5.2|Question == 5.3| Question == 5.4)
+ee.Q5$Day <- NA
+ee.Q5$Day[ee.Q5$Question == 5.1] <- 85
+ee.Q5$Day[ee.Q5$Question == 5.2] <- 35
+ee.Q5$Day[ee.Q5$Question == 5.3] <- 0
+ee.Q5$Day[ee.Q5$Question == 5.4] <- 110
+
+ggplot(ee.Q5, aes(x = Day, y = Best)) +
+  geom_pointrange(aes(ymin = Low80, ymax = Hi80)) + 
+  geom_point(aes(x = 60, y = 0.9), col = "red") +
+  labs(x = "Extreme Sea Ice Days") +
+  labs(y = "Breeding Propensity") +
+  facet_wrap(~ Respondent)
 
 # Q6
 ee.Q6 <- ee.dat[ee.dat$Question == 6  & ee.dat$out == 0,]
