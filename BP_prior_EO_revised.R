@@ -22,41 +22,48 @@ print(gplot)
 
 #try to simulate some data consistent with the EE response
 #revised from BP_prior_EO to use rriskDistributions
+ee0 <- vlow
+par0 <- get.beta.par(p=c(0.1, 0.5, 0.9), q=ee0, tol = 1e8)
+# NOTE: not fitting very well to the upper bound
+quantile(rbeta(10000, par0[[1]], par0[[2]]), c(0.1, 0.5, 0.9))
+sim0 <- rbeta(100, par0[[1]], par0[[2]])
+
 ee35 <- low
 par35 <- get.beta.par(p=c(0.1, 0.5, 0.9), q=ee35)
 quantile(rbeta(10000, par35[[1]], par35[[2]]), c(0.1, 0.5, 0.9))
-# 10%       50%       90% 
-# 0.4272811 0.6923437 0.8921043 
 sim35 <- rbeta(100, par35[[1]], par35[[2]])
 
 base60 <- c(0.8,0.9,1.0)
 par60 <- get.beta.par(p=c(0.1, 0.5, 0.9), q=base60, tol = 1e8)
+# NOTE: not fitting very well to the upper bound (which is 1.0)
 quantile(rbeta(10000, par60[[1]], par60[[2]]), c(0.1, 0.5, 0.9))
-# 10%       50%       90% 
-# 0.7987395 0.9002246 0.9608277
 sim60 <- rbeta(100, par60[[1]], par60[[2]])
 
 ee85 <- high
 par85 <- get.beta.par(p=c(0.1, 0.5, 0.9), q=ee85)
 quantile(rbeta(10000, par85[[1]], par85[[2]]), c(0.1, 0.5, 0.9))
-# 10%       50%       90% 
-# 0.4115011 0.6410260 0.8313530 
 sim85 <- rbeta(100, par85[[1]], par85[[2]])
 
-plot(c(-1, 0, 1), c(sim35[1], sim60[1], sim85[1]), type='l', ylim=c(0, 1), xlim=c(-3, 3))
+ee110 <- vhigh
+par110 <- get.beta.par(p=c(0.1, 0.5, 0.9), q=ee110)
+quantile(rbeta(10000, par110[[1]], par110[[2]]), c(0.1, 0.5, 0.9))
+sim110 <- rbeta(100, par110[[1]], par110[[2]])
+
+plot(c(-2.4, -1, 0, 1, 2), c(sim0[1], sim35[1], sim60[1], sim85[1], sim110[1]),
+     type='l', ylim=c(0, 1), xlim=c(-3, 3))
 for(i in 2:100){
-  lines(c(-1, 0, 1), c(sim35[i], sim60[i], sim85[i]))
+  lines(c(-2.4, -1, 0, 1, 2), c(sim0[i], sim35[i], sim60[i], sim85[i], sim110[i]))
 }
 
 #find and store best polynomial fit
 betas <- matrix(0, 100, 3)
 objfun <- function(beta, y){
-  x <- c(-1, 0, 1)
-  X <- matrix(c(1,1,1,x,x^2), 3, 3)
+  x <- c(-2.4, -1, 0, 1, 2)
+  X <- matrix(c(1,1,1,1,1,x,x^2), 5, 3)
   sum((y-X%*%beta)^2)
 }
 for(i in 1:100){
-  fit <- optim(par=c(0,1,0), fn=objfun, y=qlogis(c(sim35[i], sim60[i], sim85[i])))
+  fit <- optim(par=c(0,1,0), fn=objfun, y=qlogis(c(sim0[i],sim35[i], sim60[i], sim85[i],sim110[i])))
   betas[i,] <- fit$par
 }
 #plot fits
@@ -66,7 +73,7 @@ for(i in 2:100){
   lines(x, matrix(c(rep(1, length(x)),x,x^2),length(x),3)%*%betas[i,])
 }
 for(i in 1:100){
-  lines(c(-1, 0, 1), qlogis(c(sim35[i], sim60[i], sim85[i])), col = "red")
+  lines(c(-2.4, -1, 0, 1, 2), qlogis(c(sim0[i], sim35[i], sim60[i], sim85[i], sim110[i])), col = "red")
 }
 
 #on real scale
@@ -75,7 +82,7 @@ for(i in 2:100){
   lines(x, plogis(matrix(c(rep(1, length(x)),x,x^2),length(x),3)%*%betas[i,]))
 }
 for(i in 1:100){
-  lines(c(-1, 0, 1), qlogis(c(sim35[i], sim60[i], sim85[i]), col = "red")
+  lines(c(-2.4, -1, 0, 1, 2), (c(sim0[i], sim35[i], sim60[i], sim85[i], sim110[i])), col = "red")
 }
 #find mean and cov of betas
 mbetas <- apply(betas, 2, mean)
