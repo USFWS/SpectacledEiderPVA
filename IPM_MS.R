@@ -94,6 +94,28 @@ fecund.param$ns.obs.beta <- round(fecund.param$ns.obs.alpha*(1-fecund.param$ns.o
 muBP <- c(1.2811, -0.1444, -0.0724)
 SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
                     0.0186, 0.0197), nrow = 3, ncol = 3)
+#### JAGS set up
+# bundle data
+jags.data <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
+                  marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
+                  ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
+                  count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
+                  nest.obs.a = fecund.param$ns.obs.alpha[1:23],
+                  nest.obs.b = fecund.param$ns.obs.beta[1:23],
+                  K = K, BEFORE = 4, AFTER = 4)
+
+# initial values
+inits <- function(){list(
+  mean.phi0 = runif(1, 0.2, 0.3), 
+  mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
+
+# parameters monitored
+parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha", 
+                "mean.log.F", "betaN", "beta", "sigma.o", "sigma.d", 
+                "betaBP")
+
+# MCMC settings
+ni <- 20000; nt <- 1; nb <- 10000; nc <- 3
 
 
 # NOTE!!! COMMENTS REQUIRED IN MODEL AND INPUT DATA TO CHANGE FOR EACH SCENARIO
@@ -250,7 +272,7 @@ for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
                      - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t]
     logit.phi2[t] <- logit(mean.phiA) + beta[1]*ice[t+1] 
                      + beta[2]*ice[t+1]*ice[t+1] 
-                     - betaN[2]*(N[3,t] + N[4,t]) + eps.phiA[t]
+                     - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t]
     eps.phiA[t] ~ dnorm(0, tau.phiA)
     phiA[t] <- ilogit(logit.phiA[t])
     phi2[t] <- ilogit(logit.phi2[t])
@@ -363,28 +385,6 @@ for (t in 1:K){ # extended loop here
 }
 }
 ")
-
-
-# bundle data
-jags.data <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
-                  marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
-                  ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
-                  count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
-                  nest.obs.a = fecund.param$ns.obs.alpha[1:23],
-                  nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                  K = K, BEFORE = 4, AFTER = 4)
-
-# initial values
-inits <- function(){list(
-  mean.phi0 = runif(1, 0.2, 0.3), 
-  mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
-
-# parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", 
-                "sigma.o", "betaBP")
-
-# MCMC settings
-ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
 YKD.L2008.8.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
@@ -545,7 +545,7 @@ for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
                      - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t] 
     logit.phi2[t] <- logit(mean.phiA) + beta[1]*ice[t+1] 
                      + beta[2]*ice[t+1]*ice[t+1] 
-                     - betaN[2]*(N[3,t] + N[4,t]) + eps.phiA[t]
+                     - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t]
     eps.phiA[t] ~ dnorm(0, tau.phiA)
     phiA[t] <- ilogit(logit.phiA[t])
     phi2[t] <- ilogit(logit.phi2[t])
@@ -658,28 +658,6 @@ for (t in 1:K){ # extended loop here
 }
 }
 ")
-
-
-# bundle data
-jags.data <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP = SigmaBP,
-                  marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
-                  ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
-                  count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
-                  nest.obs.a = fecund.param$ns.obs.alpha[1:23],
-                  nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                  K = K, BEFORE = 4, AFTER = 4)
-
-# initial values
-inits <- function(){list(
-  mean.phi0 = runif(1, 0.2, 0.3), 
-  mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
-
-# parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", "sigma.d", 
-                "sigma.o", "betaBP")
-
-# MCMC settings
-ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
 YKD.constant.8.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
@@ -839,7 +817,7 @@ for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
                      - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t] 
     logit.phi2[t] <- logit(mean.phiA) + beta[1]*ice[t+1] 
                      + beta[2]*ice[t+1]*ice[t+1] 
-                     - betaN[2]*(N[3,t] + N[4,t]) + eps.phiA[t]
+                     - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t]
     eps.phiA[t] ~ dnorm(0, tau.phiA)
     phiA[t] <- ilogit(logit.phiA[t])
     phi2[t] <- ilogit(logit.phi2[t])
@@ -952,28 +930,6 @@ for (t in 1:K){ # extended loop here
 }
 }
 ")
-
-
-# bundle data
-jags.data <- list(obs.ice = ice.data4.5, nb.size = 4, muBP = muBP, SigmaBP = SigmaBP,
-                  marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
-                  ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
-                  count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
-                  nest.obs.a = fecund.param$ns.obs.alpha[1:23],
-                  nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                  K = K, BEFORE = 4, AFTER = 4)
-
-# initial values
-inits <- function(){list(
-  mean.phi0 = runif(1, 0.2, 0.3), 
-  mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
-
-# parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", "sigma.d", 
-                "sigma.o", "betaBP")
-
-# MCMC settings
-ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
 YKD.constant.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
@@ -1133,7 +1089,7 @@ for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
                      - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t] 
     logit.phi2[t] <- logit(mean.phiA) + beta[1]*ice[t+1] 
                      + beta[2]*ice[t+1]*ice[t+1] 
-                     - betaN[2]*(N[3,t] + N[4,t]) + eps.phiA[t]
+                     - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t]
     eps.phiA[t] ~ dnorm(0, tau.phiA)
     phiA[t] <- ilogit(logit.phiA[t])
     phi2[t] <- ilogit(logit.phi2[t])
@@ -1246,28 +1202,6 @@ for (t in 1:K){ # extended loop here
 }
 }
 ")
-
-
-# bundle data
-jags.data <- list(obs.ice = ice.data4.5, nb.size = 4, muBP = muBP, SigmaBP = SigmaBP,
-                  marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
-                  ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
-                  count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
-                  nest.obs.a = fecund.param$ns.obs.alpha[1:23],
-                  nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                  K = K, BEFORE = 4, AFTER = 4)
-
-# initial values
-inits <- function(){list(
-  mean.phi0 = runif(1, 0.2, 0.3), 
-  mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
-
-# parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", "sigma.d", 
-                "sigma.o", "betaBP")
-
-# MCMC settings
-ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
 YKD.L2008.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
