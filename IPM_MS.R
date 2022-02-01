@@ -23,8 +23,6 @@ K <- 81
 
 # Count Data, 1988 - 2019
 counts <- read.csv("input_data/YKD_SPEI.csv", header = T)
-counts$Nibb[counts$Year==2015] <- NA
-counts$seNibb[counts$Year==2015] <- NA
 observer <- c(1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
               5, 5, 5, 5, 5)
 
@@ -92,6 +90,12 @@ fecund.param$ns.obs.alpha <-
 fecund.param$ns.obs.beta <- round(fecund.param$ns.obs.alpha*(1-fecund.param$ns.obs.gs)
                                   /fecund.param$ns.obs.gs, 0)
 
+# from BP_prior_EO_revised, mean and VCV for BP ice covariates
+muBP <- c(1.2811, -0.1444, -0.0724)
+SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
+                    0.0186, 0.0197), nrow = 3, ncol = 3)
+
+
 # NOTE!!! COMMENTS REQUIRED IN MODEL AND INPUT DATA TO CHANGE FOR EACH SCENARIO
 # RUN
 
@@ -144,10 +148,7 @@ for (i in 21:(BEFORE+n.occasions-1+AFTER+K)){
 
 # productivity
 mean.log.F ~ dnorm(-0.47,100) 
-mean.logit.BP ~ dnorm(1.54, 1000) # from EE, 1.73 in RCP4.5, 1.54 in RCP8.5
-betaF.ice ~ dnorm(2.62, 1000) # from EE, 2.57 in RCP4.5, 2.62 in RCP8.5
-betaF.ice2 ~ dnorm(0.06, 1000) # from EE, 0.12 in RCP4.5, 0.06 in RCP8.5
-betaF.ice3 ~ dnorm(-0.66, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
+betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
@@ -217,8 +218,7 @@ for (t in 1:(n.occasions+BEFORE+AFTER)){
 ## Fecundity Model
 # Process model
 for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here
-  logit.BP[t] <- mean.logit.BP + betaF.ice*ice[t] + betaF.ice2*ice[t]*ice[t]
-  + betaF.ice3*ice[t]*ice[t]*ice[t] + eps.BP[t]
+  logit.BP[t] <- betaBP[1] + betaBP[2]*ice[t] + betaBP[3]*ice[t]*ice[t]+ eps.BP[t]
   eps.BP[t] ~ dnorm(0, tau.BP)
   BP[t] <- ilogit(logit.BP[t])
   F[t] <- exp(log(phi0[t] + (1-phi0[t])*omegaJ) + mean.log.F 
@@ -366,7 +366,7 @@ for (t in 1:K){ # extended loop here
 
 
 # bundle data
-jags.data <- list(obs.ice = ice.data8.5, nb.size = 4,
+jags.data <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
                   marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                   ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                   count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
@@ -381,7 +381,7 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", 
-                "sigma.o", "betaF.ice", "betaF.ice2", "betaF.ice3", "mean.logit.BP")
+                "sigma.o", "betaBP")
 
 # MCMC settings
 ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
@@ -391,7 +391,7 @@ YKD.L2008.8.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags",
                       n.chains = nc, n.burnin=nb, n.iter = ni,  
                       parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.L2008.8.5, file = "YKD.L2008.8.5.rds")
+saveRDS(YKD.L2008.8.5, file = "MS_Scenarios/YKD.L2008.8.5.rds")
 
 
 ### Lead Constant, RCP8.5
@@ -443,10 +443,7 @@ for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){
 
 # productivity
 mean.log.F ~ dnorm(-0.47,100) 
-mean.logit.BP ~ dnorm(1.54, 1000) # from EE, 1.73 in RCP4.5, 1.54 in RCP8.5
-betaF.ice ~ dnorm(2.62, 1000) # from EE, 2.57 in RCP4.5, 2.62 in RCP8.5
-betaF.ice2 ~ dnorm(0.06, 1000) # from EE, 0.12 in RCP4.5, 0.06 in RCP8.5
-betaF.ice3 ~ dnorm(-0.66, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
+betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
@@ -516,8 +513,7 @@ for (t in 1:(n.occasions+BEFORE+AFTER)){
 ## Fecundity Model
 # Process model
 for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here
-  logit.BP[t] <- mean.logit.BP + betaF.ice*ice[t] + betaF.ice2*ice[t]*ice[t]
-  + betaF.ice3*ice[t]*ice[t]*ice[t] + eps.BP[t]
+  logit.BP[t] <- betaBP[1] + betaBP[2]*ice[t] + betaBP[3]*ice[t]*ice[t] + eps.BP[t]
   eps.BP[t] ~ dnorm(0, tau.BP)
   BP[t] <- ilogit(logit.BP[t])
   F[t] <- exp(log(phi0[t] + (1-phi0[t])*omegaJ) + mean.log.F 
@@ -665,7 +661,7 @@ for (t in 1:K){ # extended loop here
 
 
 # bundle data
-jags.data <- list(obs.ice = ice.data8.5, nb.size = 4,
+jags.data <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP = SigmaBP,
                   marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                   ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                   count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
@@ -680,7 +676,7 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", "sigma.d", 
-                "sigma.o", "betaF.ice", "betaF.ice2", "betaF.ice3", "mean.logit.BP")
+                "sigma.o", "betaBP")
 
 # MCMC settings
 ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
@@ -690,7 +686,7 @@ YKD.constant.8.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags",
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.constant.8.5, file = "YKD.constant.8.5.rds")
+saveRDS(YKD.constant.8.5, file = "MS_Scenarios/YKD.constant.8.5.rds")
 
 ### Lead Constant, RCP4.5
 cat(file = "YKD_IPM.jags", "
@@ -741,10 +737,7 @@ for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){
 
 # productivity
 mean.log.F ~ dnorm(-0.47,100) 
-mean.logit.BP ~ dnorm(1.73, 1000) # from EE, 1.73 in RCP4.5, 1.54 in RCP8.5
-betaF.ice ~ dnorm(2.57, 1000) # from EE, 2.57 in RCP4.5, 2.62 in RCP8.5
-betaF.ice2 ~ dnorm(0.12, 1000) # from EE, 0.12 in RCP4.5, 0.06 in RCP8.5
-betaF.ice3 ~ dnorm(-0.6, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
+betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
@@ -814,8 +807,7 @@ for (t in 1:(n.occasions+BEFORE+AFTER)){
 ## Fecundity Model
 # Process model
 for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here
-  logit.BP[t] <- mean.logit.BP + betaF.ice*ice[t] + betaF.ice2*ice[t]*ice[t]
-  + betaF.ice3*ice[t]*ice[t]*ice[t] + eps.BP[t]
+  logit.BP[t] <- betaBP[1] + betaBP[2]*ice[t] + betaBP[3]*ice[t]*ice[t] + eps.BP[t]
   eps.BP[t] ~ dnorm(0, tau.BP)
   BP[t] <- ilogit(logit.BP[t])
   F[t] <- exp(log(phi0[t] + (1-phi0[t])*omegaJ) + mean.log.F 
@@ -963,7 +955,7 @@ for (t in 1:K){ # extended loop here
 
 
 # bundle data
-jags.data <- list(obs.ice = ice.data4.5, nb.size = 4,
+jags.data <- list(obs.ice = ice.data4.5, nb.size = 4, muBP = muBP, SigmaBP = SigmaBP,
                   marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                   ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                   count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
@@ -978,7 +970,7 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", "sigma.d", 
-                "sigma.o", "betaF.ice", "betaF.ice2", "betaF.ice3", "mean.logit.BP")
+                "sigma.o", "betaBP")
 
 # MCMC settings
 ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
@@ -988,7 +980,7 @@ YKD.constant.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags",
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.constant.4.5, file = "YKD.constant.4.5.rds")
+saveRDS(YKD.constant.4.5, file = "MS_Scenarios/YKD.constant.4.5.rds")
 
 ### Lead 2008, RCP4.5
 cat(file = "YKD_IPM.jags", "
@@ -1039,10 +1031,7 @@ for (i in 21:(BEFORE+n.occasions-1+AFTER+K)){
 
 # productivity
 mean.log.F ~ dnorm(-0.47,100) 
-mean.logit.BP ~ dnorm(1.73, 1000) # from EE, 1.73 in RCP4.5, 1.54 in RCP8.5
-betaF.ice ~ dnorm(2.57, 1000) # from EE, 2.57 in RCP4.5, 2.62 in RCP8.5
-betaF.ice2 ~ dnorm(0.12, 1000) # from EE, 0.12 in RCP4.5, 0.06 in RCP8.5
-betaF.ice3 ~ dnorm(-0.6, 1000) # from EE, -0.6 in RCP4.5, -0.66 in RCP8.5
+betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
@@ -1112,8 +1101,7 @@ for (t in 1:(n.occasions+BEFORE+AFTER)){
 ## Fecundity Model
 # Process model
 for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here
-  logit.BP[t] <- mean.logit.BP + betaF.ice*ice[t] + betaF.ice2*ice[t]*ice[t]
-  + betaF.ice3*ice[t]*ice[t]*ice[t] + eps.BP[t]
+  logit.BP[t] <- betaBP[1] + betaBP[2]*ice[t] + betaBP[3]*ice[t]*ice[t] + eps.BP[t]
   eps.BP[t] ~ dnorm(0, tau.BP)
   BP[t] <- ilogit(logit.BP[t])
   F[t] <- exp(log(phi0[t] + (1-phi0[t])*omegaJ) + mean.log.F 
@@ -1261,7 +1249,7 @@ for (t in 1:K){ # extended loop here
 
 
 # bundle data
-jags.data <- list(obs.ice = ice.data4.5, nb.size = 4,
+jags.data <- list(obs.ice = ice.data4.5, nb.size = 4, muBP = muBP, SigmaBP = SigmaBP,
                   marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                   ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                   count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
@@ -1276,7 +1264,7 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "mean.log.F", "betaN", "beta", "o", "sigma.d", 
-                "sigma.o", "betaF.ice", "betaF.ice2", "betaF.ice3", "mean.logit.BP")
+                "sigma.o", "betaBP")
 
 # MCMC settings
 ni <- 100000; nt <- 1; nb <- 10000; nc <- 3
@@ -1286,4 +1274,4 @@ YKD.L2008.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags",
                       n.chains = nc, n.burnin=nb, n.iter = ni,  
                       parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.L2008.4.5, file = "YKD.L2008.4.5.rds")
+saveRDS(YKD.L2008.4.5, file = "MS_Scenarios/YKD.L2008.4.5.rds")
