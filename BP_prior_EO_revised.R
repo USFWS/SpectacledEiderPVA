@@ -93,7 +93,9 @@ plot(x, plogis(matrix(c(rep(1, length(x)),x,x^2),length(x),3)%*%preds[1,]), type
 for(i in 2:100){
   lines(x, plogis(matrix(c(rep(1, length(x)),x,x^2),length(x),3)%*%preds[i,]))
 }
-
+for(i in 1:100){
+  lines(c(-2.4, -1, 0, 1, 2), (c(sim0[i], sim35[i], sim60[i], sim85[i], sim110[i])), col = "red")
+}
 
 #below is exploratory stuff, no long applicable
 # df <- data.frame(ice=rep(c(-1, 0, 1), each=100), bp=c(x3, x1, x2))
