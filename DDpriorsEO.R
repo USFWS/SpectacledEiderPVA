@@ -129,3 +129,75 @@ fit
 qgamma(c(0.1, 0.5, 0.9), shape=fit$par[1], rate=fit$par[2])
 # [1] 0.004317903 0.011322344 0.023611622
 hist(rgamma(10000, fit$par[1], fit$par[2]))
+
+# Check results
+# Plot results from draws of prior:
+Nsim <- 1000
+DD <- rgamma(Nsim, fit$par[1], fit$par[2])
+K <- numeric(Nsim)
+for(i in 1:Nsim){
+  K[i] <- optimize(f=Atest, interval = c(0, 1e7), betaN = DD[i])$minimum
+}
+hist(K)
+
+#try fitting distribution with the package rriskDistributions
+library(rriskDistributions)
+fit <- get.gamma.par(p=c(0.1, 0.5, 0.9), q=c(0.005317332, 0.01055036, 0.02458014))
+qgamma(c(0.1, 0.5, 0.9), shape=fit[1], rate=fit[2])
+hist(rgamma(10000, fit[1], fit[2]))
+# > fit
+# shape       rate 
+# 3.109273 251.648023 
+# Plot results from draws of prior:
+Nsim <- 1000
+DD <- rgamma(Nsim, fit[1], fit[2])
+K <- numeric(Nsim)
+for(i in 1:Nsim){
+  K[i] <- optimize(f=Atest, interval = c(0, 1e7), betaN = DD[i])$minimum
+}
+hist(K)
+summary(K)
+summary(DD)
+plot(DD, K)
+plot(DD[K<2e6], K[K<2e6])
+max(DD[K<2e6])
+
+#humm, for strong DD, optimization doesn't work. IS there a maximum DD?
+lambda = function(N=10000, betaN=0.01){
+  ilogit <- function(x){exp(x)/(1+exp(x))}
+  BP <- ilogit(2.2) # assumed mean BP was 0.9
+  mean.phi0 <- 0.325 # phi.0 + (1-phi.0)*omegaJ, from cjs and EE
+  mean.logit.phi0 <- log(mean.phi0/(1-mean.phi0))
+  mean.phiA <- 0.9 # phi.A + (1-phi.A)*omegaA, from cjs and EE
+  mean.logit.phiA <- log(mean.phiA/(1-mean.phiA))
+  mean.log.F <- -0.47 # log(nest success*clutch size*duckling survival, Kig)
+  phi0 <- ilogit(mean.logit.phi0)
+  logit.phiA <- mean.logit.phiA - betaN*(N/1000) # rescaling N
+  phiA <- ilogit(logit.phiA)
+  F <- exp(log(phi0) + mean.log.F - betaN*(N/1000) + log(BP) ) # rescaling N
+  phi2 <- phiA
+  phi1 <- phi2
+  alpha <- 1.95/7.1 # from EE
+  
+  A <- matrix(c(0, 0, F, F, 
+                (1-alpha)*phi1, 0, 0, 0, 
+                alpha*phi1, 0, 0, 0, 
+                0, phi2, phiA, phiA), ncol = 4, byrow = T)
+  
+  return( max(Re(eigen(A)$values)) )
+}
+
+growth <- numeric(Nsim)
+DD <- rgamma(Nsim, fit[1], fit[2])
+for(i in 1:Nsim){
+  growth[i] = lambda(N=1, betaN=DD[i])
+}
+summary(growth)
+plot(DD, growth)
+#Ah ha, basic pop bio!, the max DD needs to be bound so that r_max => 0 when N = 0
+#In fact DD should be < lambda at zero population size
+lambda(N=0, betaN=0.04)
+#[1] 1.042269
+#Take home, use results from quantile matching in rriskDistributions, above
+# shape       rate 
+# 3.109273 251.648023 
