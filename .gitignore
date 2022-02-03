@@ -8,4 +8,5 @@
 *.xlsx
 *.rds
 *.jags
+MS_Scenarios/**
 
