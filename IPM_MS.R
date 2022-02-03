@@ -174,7 +174,7 @@ betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
@@ -447,7 +447,7 @@ betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
@@ -719,7 +719,7 @@ betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
@@ -932,7 +932,7 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-YKD.constant.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
+scaledNb.IPM <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
@@ -991,7 +991,7 @@ betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 tau.BP <- pow(sigma.BP, -2)
 sigma.BP ~ dunif(0,1)
 for (i in 1:2){
-betaN[i] ~ dgamma(2.6, 193.8) # from EE, see DDpriorsEO.R
+betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 } #i
 
 # survival and breeding propensity
