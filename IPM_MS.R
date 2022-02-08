@@ -95,13 +95,21 @@ SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
                     0.0186, 0.0197), nrow = 3, ncol = 3)
 #### JAGS set up
 # bundle data
-jags.data <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
+jags.data8.5 <- list(obs.ice = ice.data8.5, nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
                   marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                   ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                   count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
                   nest.obs.a = fecund.param$ns.obs.alpha[1:23],
                   nest.obs.b = fecund.param$ns.obs.beta[1:23],
                   K = K, BEFORE = 4, AFTER = 4)
+
+jags.data4.5 <- list(obs.ice = ice.data4.5, nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
+                     marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
+                     ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
+                     count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
+                     nest.obs.a = fecund.param$ns.obs.alpha[1:23],
+                     nest.obs.b = fecund.param$ns.obs.beta[1:23],
+                     K = K, BEFORE = 4, AFTER = 4)
 
 # initial values
 inits <- function(){list(
@@ -386,7 +394,7 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-YKD.L2008.8.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
+YKD.L2008.8.5 <- jags(jags.data8.5, inits, parameters, "YKD_IPM.jags", 
                       n.chains = nc, n.burnin=nb, n.iter = ni,  
                       parallel = TRUE, n.adapt = 1000)
 
@@ -659,7 +667,7 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-YKD.constant.8.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
+YKD.constant.8.5 <- jags(jags.data8.5, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
@@ -931,7 +939,7 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-scaledNb.IPM <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
+scaledNb.IPM <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
@@ -1203,7 +1211,7 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-YKD.L2008.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
+YKD.L2008.4.5 <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
                       n.chains = nc, n.burnin=nb, n.iter = ni,  
                       parallel = TRUE, n.adapt = 1000)
 
