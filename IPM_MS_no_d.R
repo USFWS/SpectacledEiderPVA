@@ -111,16 +111,11 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha", 
-                "mean.log.F", "betaN", "beta", "sigma.o", "sigma.d", 
+                "mean.log.F", "betaN", "beta", "sigma.o", "d", 
                 "betaBP")
 
 # MCMC settings
 ni <- 20000; nt <- 1; nb <- 10000; nc <- 3
-
-
-# NOTE!!! COMMENTS REQUIRED IN MODEL AND INPUT DATA TO CHANGE FOR EACH SCENARIO
-# RUN
-
 
 ### Lead Constant, RCP4.5
 cat(file = "YKD_IPM.jags", "
@@ -387,22 +382,23 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-YKD.constant.4.5 <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
+out <- jags(jags.data, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
 
-saveRDS(YKD.constant.4.5, file = "MS_Scenarios/YKD.constant.4.5_no_d.rds")
-
+saveRDS(out, file = "MS_Scenarios/YKD.constant.4.5_no_d.rds")
+# YKD.constant.4.5 <- readRDS(file = "MS_Scenarios/YKD.constant.4.5_no_d.rds")
+# out <- YKD.constant.4.5
 #plot trajectories
 library(tidyverse)
-L2008.4.5dat <- YKD.constant.4.5$sims.list$Nb
-L2008.4.5mean <- data.frame(YKD.constant.4.5$mean$Nb)
+L2008.4.5dat <- out$sims.list$Nb
+L2008.4.5mean <- data.frame(out$mean$Nb)
 names(L2008.4.5mean) <- c("Nb.mean")
 L2008.4.5mean$Year <- c(1988:2100)
 
 set.seed(84)
-hold <- sample(1:nrow(YKD.constant.4.5$sims.list$Nb), 50, replace = FALSE)
+hold <- sample(1:nrow(out$sims.list$Nb), 50, replace = FALSE)
 L2008.4.5dat <- data.frame(t(L2008.4.5dat[hold,]))
 
 L2008.4.5dat$Year <- c(1988:2100)
@@ -419,3 +415,4 @@ ggplot(L2008.4.5fig, aes(x = Year, y = Nb/1000, col = Sim)) +
   scale_color_manual(values=rep("grey80", length(L2008.4.5fig$Sim))) + 
   theme_classic() + 
   theme(legend.position = "none")
+

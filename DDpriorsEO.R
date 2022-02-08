@@ -201,3 +201,35 @@ lambda(N=0, betaN=0.04)
 #Take home, use results from quantile matching in rriskDistributions, above
 # shape       rate 
 # 3.109273 251.648023 
+
+# Do population projections
+A = function(N=10000, betaN=0.01){
+  ilogit <- function(x){exp(x)/(1+exp(x))}
+  BP <- ilogit(2.2) # assumed mean BP was 0.9
+  mean.phi0 <- 0.325 # phi.0 + (1-phi.0)*omegaJ, from cjs and EE
+  mean.logit.phi0 <- log(mean.phi0/(1-mean.phi0))
+  mean.phiA <- 0.9 # phi.A + (1-phi.A)*omegaA, from cjs and EE
+  mean.logit.phiA <- log(mean.phiA/(1-mean.phiA))
+  mean.log.F <- -0.47 # log(nest success*clutch size*duckling survival, Kig)
+  phi0 <- ilogit(mean.logit.phi0)
+  logit.phiA <- mean.logit.phiA - betaN*(N/1000) # rescaling N
+  phiA <- ilogit(logit.phiA)
+  F <- exp(log(phi0) + mean.log.F - betaN*(N/1000) + log(BP) ) # rescaling N
+  phi2 <- phiA
+  phi1 <- phi2
+  alpha <- 1.95/7.1 # from EE
+  
+  A <- matrix(c(0, 0, F, F, 
+                (1-alpha)*phi1, 0, 0, 0, 
+                alpha*phi1, 0, 0, 0, 
+                0, phi2, phiA, phiA), ncol = 4, byrow = T)
+  
+  return( A )
+}
+T = 1000
+n=matrix(c(1,1,1,1), 4,T)
+for(i in 2:T){
+  n[,i] = A(N=sum(n[c(3,4),i]), beta=0.01)%*%n[,i-1]
+}
+plot(1:T, colSums(n))
+
