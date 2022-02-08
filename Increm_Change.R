@@ -1,5 +1,5 @@
 # moving from IPM_YKD to IPM_MS, one change at a time
-# using RCP4.5, constant lead as the base model for exploration
+# using RCP8.5, constant lead as the base model for exploration
 
 #1) change ice effects on breeding propensity
 #2) change observation error (d) specification
