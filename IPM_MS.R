@@ -10,8 +10,7 @@
 
 # 3) revising EE priors for ice effects on breeding propensity,
 # density dependence, and annual variation in aerial detection. See EE write up for
-# all other EE priors. 1.27.2022 NOTE: DD and annual variation have been updated, 
-# ICE EFFECTS ON bp STILL NEEDED
+# all other EE priors. 1.27.2022 
 
 # 4) update input data, ice (from Dan R.) and counts (from Chuck F.) 
 
