@@ -134,7 +134,7 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha", 
-                "mean.log.F", "betaN", "betaIce", "sigma.o", "d", 
+                "mean.log.F", "betaN", "betaPhi", "sigma.o", "d", 
                 "betaBP")
 
 # MCMC settings
