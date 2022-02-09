@@ -414,4 +414,4 @@ YKD.constant.4.5.PhiMVN <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags",
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.constant.4.5, file = "MS_Scenarios/YKD.constant.4.5.rds")
+saveRDS(YKD.constant.4.5.PhiMVN, file = "MS_Scenarios/YKD.constant.4.5.PhiMVN.rds")
