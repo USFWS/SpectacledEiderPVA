@@ -149,7 +149,7 @@ parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha",
                 "betaBP")
 
 # MCMC settings
-ni <- 20000; nt <- 1; nb <- 10000; nc <- 3
+ni <- 50000; nt <- 1; nb <- 10000; nc <- 3 # up'd iterations from 20K
 
 
 ### Lead Constant, RCP4.5
