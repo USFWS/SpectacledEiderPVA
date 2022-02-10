@@ -23,4 +23,5 @@ results <- popest(dat=dat, vcfData=vcfData, Mdat=Mdat)
 print(results$plot)
 ggsave("YKD_SPEI.png", plot=results$plot, device = "png",  width = 7, height = 7)
 results$popest
+results$popest$mvcf <- results$popest$Nibb/results$popest$Index
 write.csv(results$popest, file="input_data/YKD_SPEI.csv", row.names=FALSE)
