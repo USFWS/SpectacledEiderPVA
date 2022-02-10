@@ -12,7 +12,7 @@ par <- get.beta.par(p=c(0.1, 0.5, 0.9), q=ee)
 hist(rbeta(10000, par[[1]], par[[2]])) 
 #this is the distribution for absolute value of differences in detection probability, (p_t - p_hat)
 #Now translate that to log-scale d for IPM observation model:
-# because the observed estimates are centered on mean detection (VCF), 
+# because the observed estimates are centered on mean detection (VCF, see Lewis 2019), 
 # we need to translate the above to something consistent with deviations on the log-scale,
 # Y ~ Normal(2b, sigma_obs), log(b) = log(mu) - o - d
 # Y = breeding birds (males + females) from survey, sigma_obs is estimated from survey design, 
@@ -24,21 +24,23 @@ hist(rbeta(10000, par[[1]], par[[2]]))
 # in a year where the true VCF is > average (detection was low), Y_obs will be < average 
 # and the VCF should have been adjusted up and the deviation is > 1. In other words, 
 # we should have inflated Y_obs to a greater degree, causing Y to be greater than we measured. 
-# But this is not observed, so we add the log offset to the linear predictor to adjust the expected response 
-# for any given model-predicted expectation mu. This causes lower predictions of mu to be favored in the draw of the 
-# MCMC chain. he observer effect, however, is estimated as an average effect of an observer over the multiple years. 
+# But this is not observed, so we add the log offset to the linear predictor to adjust the expected 
+# response for any given model-predicted expectation mu. This causes lower predictions of mu to be 
+# favored in the draw of the MCMC chain. The observer effect, however, is estimated as an average 
+# effect of an observer over the multiple years. 
 # 
 # Should variation in d add to sigma_obs? Is what we are doing equivalent? 
 
+#Below is just exploratory and assume d = 0.5
 x <- rbeta(100000, par[[1]], par[[2]])
 x <- x[x<0.5]
 hist(x) #this is what we elicited in question 9
 x2 <- c(0.5+x,0.5-x)
-hist(x2, breaks=100) #this is the associated detection probability
+hist(x2, breaks=100) #this is the associated detection probability, assuming and average of 0.5
 hist(1/x2, xlim=c(0, 10), breaks=10000)  #this is the VCF = 1/detection, note the dip at 2
 x3 <- 1/x2 - 2 #this is the deviation in the VCF: VCF - average VCF = 1/p - 1/0.5 = VCF - 2
 hist(x3, xlim=c(-2, 10), breaks=10000) #note the dip at 0
-x4 <- 1/(2*x2)
+x4 <- 1/(3*x2) #vcf = 2
 hist(x4, xlim=c(0, 4), breaks=8000) #this is the multiplicative factor for the VCF
 #log scale
 hist(log(x4), xlim=c(0, 4), breaks=1000)
