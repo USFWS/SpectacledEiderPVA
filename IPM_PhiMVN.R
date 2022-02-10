@@ -12,18 +12,25 @@
 # density dependence, and annual variation in aerial detection. See EE write up for
 # all other EE priors. 1.27.2022 
 
-# 4) update input data, ice (from Dan R.) and counts (from Chuck F.) 
+# 4) added a linear effect for minimal (<15%) ice on survival for phiA and phi0;
+# priors for this and the betas for extreme ice (and its square) obtained from the CJS-only
+# model and added as a MVN
+
+# 5) update input data, ice (from Dan R.) and counts (from Chuck F.) 
+
+# 6) revising indexing to reflect addition years of input data
 
 library(jagsUI)
 
 # Data
 # years of predictions, to 2100
-K <- 81
+K <- 79 # (count) data observed through 2021
 
-# Count Data, 1988 - 2019
-counts <- read.csv("input_data/YKD_SPEI.csv", header = T)
+# Count Data, 1988 - 2021
+counts <- read.csv("input_data/YKD_SPEI.csv", header = T) # note that 2011 and 2020
+# added to the csv with NA for count data prior to import
 observer <- c(1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
-              5, 5, 5, 5, 5)
+              5, 5, 5, 5, 5, 5, 5)
 
 # Mark-Recap Data, 1992 - 2015
 mcr.kig <- read.csv("input_data/mcr.kig.csv", header = T)
@@ -72,7 +79,7 @@ ns <- 5
 sea.ice <- read.csv("input_data/sea.ice.data.csv", header = T)
 # year is winter year (Nov - Apr)
 
-# years 1988 to 2100
+# subsetting years 1988 to 2100
 ice.data <- sea.ice[sea.ice$year >= 1988 & sea.ice$year <= 2100,]
 ext.ice.data4.5 <- ifelse(is.na(ice.data$ext.ice.obs), ice.data$ext.ice.RCP4.5, 
                       ice.data$ext.ice.obs)
@@ -99,8 +106,8 @@ muBP <- c(1.2811, -0.1444, -0.0724)
 SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
                     0.0186, 0.0197), nrow = 3, ncol = 3)
 
-# from CJS only model, mean and VCV for phi ice covariates (order is Agephi0, 
-# AgePhiA, ice.min.s, ice.ext.s, and ice.ext.s^2)
+# from CJS only model, mean and VCV for phi ice covariates (order is Intercept (Agephi0), 
+# AgePhiA additive effect, ice.min.s, ice.ext.s, and ice.ext.s^2)
 muPhi <- c(-0.9621, 2.7400, -0.1585, -0.2699, -0.2384)
 SigmaPhi <- matrix(c(0.0299, -0.0201, 0.0113, 0.0039, -0.0100, -0.0201, 0.0402, 
                      0, 0, 0, 0.0113, 0, 0.0544, 0.0404, -0.0116, 0.0039, 0, 0.0404,
@@ -110,22 +117,26 @@ SigmaPhi <- matrix(c(0.0299, -0.0201, 0.0113, 0.0039, -0.0100, -0.0201, 0.0402,
  
 #### JAGS set up
 jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.5, 
-                     nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
-                     marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
+                     nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
+                     SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                      count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
                      nest.obs.a = fecund.param$ns.obs.alpha[1:23],
                      nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                     K = K, BEFORE = 4, AFTER = 4)
+                     K = K, BEFORE = 4, AFTER = 6) 
+                     # BEFORE = no. of count years before survival data (4)
+                     # AFTER = no. of count years after survival data
 
 jags.data8.5 <- list(ext.obs.ice = ext.ice.data8.5, min.obs.ice = min.ice.data8.5,
-                     nb.size = 4, muBP = muBP, SigmaBP=SigmaBP,
-                     marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
+                     nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
+                     SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                      count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
                      nest.obs.a = fecund.param$ns.obs.alpha[1:23],
                      nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                     K = K, BEFORE = 4, AFTER = 4)
+                     K = K, BEFORE = 4, AFTER = 4) 
+                     # BEFORE = no. of count years before survival data (4)
+                     # AFTER = no. of count years after survival data
 
 # initial values
 inits <- function(){list(
@@ -147,15 +158,15 @@ model {
 
 ## Priors
 # state-space
-sigma.obs[24] ~ dunif(800, 1400) # bounds consistent with s.e. observed since 2005
-sigma.obs[28] ~ dunif(800, 1400)
+sigma.obs[24] ~ dunif(500, 1400) # 2011; bounds consistent with s.e. observed since 2005
+sigma.obs[33] ~ dunif(500, 1400) # 2020; bounds consistent with s.e. observed since 2005
 
 # adding noise to the ice predictions s.t. interannual variation in the 
 # future is consistent with the observed time series (1980 - 2018)
 for (i in 1:(K+1)){
-  ext.nb.prob[i] <- nb.size/(ext.obs.ice[n.occasions + BEFORE + AFTER - 1 + i] + nb.size)
+  ext.nb.prob[i] <- nb.size/(ext.obs.ice[n.occasions + BEFORE + AFTER - 1 + i] + nb.size) 
   ext.ice.draw[i] ~ dnegbin(ext.nb.prob[i], nb.size)
-  min.nb.prob[i] <- nb.size/(min.obs.ice[n.occasions + BEFORE + AFTER - 1 + i] + nb.size)
+  min.nb.prob[i] <- nb.size/(min.obs.ice[n.occasions + BEFORE + AFTER - 1 + i] + nb.size) 
   min.ice.draw[i] ~ dnegbin(min.nb.prob[i], nb.size)
 } # i
     
@@ -172,7 +183,7 @@ decay ~ dnorm(10, 0.1) T(1,) # assumes highly likely decay rate is between 5-15 
 ### 2026, OR CONSTANT LEAD)
 
 # constant lead
-for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){
+for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){ 
   lead[i] <- theta_0
 }
 
@@ -180,7 +191,7 @@ for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){
 #for (i in 1:20){
 #  lead[i] <- theta_0
 #} # i
-#for (i in 21:(BEFORE+n.occasions-1+AFTER+K)){
+#for (i in 21:(BEFORE+n.occasions-1+AFTER+K)){ 
 #  lead[i] <- 0.5^(1/decay)*lead[i-1]
 #} # i
 
@@ -188,7 +199,7 @@ for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){
 #for (i in 1:38){
 #  lead[i] <- theta_0
 #} # i
-#for (i in 39:(BEFORE+n.occasions-1+AFTER+K)){
+#for (i in 39:(BEFORE+n.occasions-1+AFTER+K)){ 
 #  lead[i] <- 0.5^(1/decay)*lead[i-1]
 #} # i
 
@@ -220,10 +231,6 @@ mean.logit.p <- logit(mean.p)
 tau.p <- pow(sigma.p, -2)
 sigma.p ~ dunif(0, 1)
     
-for (i in 1:3){
-  beta[i] ~ dnorm(0, 100)
-} # i
-
 beta.nest ~ dnorm(0, 100)
 
 kappa ~ dbeta(20, 20) #relate phiA to phi2 by lead rate
@@ -238,7 +245,7 @@ N[5,1] ~ dunif(100, 350) # n3+ from n2nB
 N[6,1] ~ dunif(100, 2500) # n3+ from n2B and n3+
 
 # Process model
-for (t in 1:(BEFORE+n.occasions-1+AFTER+K)){ # extended loop here
+for (t in 1:(BEFORE+n.occasions-1+AFTER+K)){ 
     N[1,t+1] <- F[t] * (N[3,t] + N[4,t]) 
     N[2,t+1] <- (phi1[t] + (1-phi1[t])*omegaJ)*(1-alpha[t])*N[1,t]
     N[3,t+1] <- (phi1[t] + (1-phi1[t])*omegaJ)*alpha[t]*N[1,t]
@@ -253,15 +260,17 @@ sigma.o ~ dgamma(1, 10)
 for(i in 1:5){
   o[i] ~ dnorm(0, tau.o)
 } # i
-for (t in 1:(n.occasions+BEFORE+AFTER)){
+for (t in 1:(n.occasions+BEFORE+AFTER)){ 
   d[t] ~ dgamma(3.28, 4.29) # from EE, see ObsPriors.R
   count[t] ~ dnorm(2*exp(log(N[3,t] + N[4,t]) - o[obs[t]] - d[t]), tau.obs[t]) # count provided as data
   tau.obs[t] <- pow(sigma.obs[t], -2) # sigma.obs provided as data
 } # t
 
+####START HERE####
+
 ## Fecundity Model
 # Process model
-for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here
+for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here # should go to end - 1
   logit.BP[t] <- betaBP[1] + betaBP[2]*ext.ice[t] + betaBP[3]*ext.ice[t]*ext.ice[t] + eps.BP[t]
   eps.BP[t] ~ dnorm(0, tau.BP)
   BP[t] <- ilogit(logit.BP[t])
