@@ -263,7 +263,7 @@ for(i in 1:5){
   o[i] ~ dnorm(0, tau.o)
 } # i
 for (t in 1:(n.occasions+BEFORE+AFTER)){
-  dev[t] ~ dbeta(2.16, 11.56) # from EE, see ObsPriors.R
+  dev[t] ~ dbeta(2.16, 11.56) T(,0.5) # from EE, see ObsPriors.R
   sign[t] ~ dbin(0.5, 1)
   d[t] <- ifelse(sign[t] == 1, dev[t], -dev[t])
   count[t] ~ dnorm(2*exp(log(N[3,t] + N[4,t]) - o[obs[t]] - log(1 + vcf[t]*d[t])), tau.obs[t]) # count provided as data
