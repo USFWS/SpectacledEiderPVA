@@ -126,7 +126,7 @@ inits <- function(){list(
 
 # parameters monitored
 parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha", 
-                "mean.log.F", "betaN", "betaIce", "sigma.o", "d", 
+                "mean.log.F", "betaN", "beta", "sigma.o", "d", 
                 "betaBP")
 
 # MCMC settings
@@ -406,4 +406,5 @@ YKD.constant.4.5.addMinIce <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jag
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.constant.4.5, file = "MS_Scenarios/YKD.constant.4.5.rds")
+saveRDS(YKD.constant.4.5.addMinIce, file = "MS_Scenarios/YKD.constant.4.5.addMinIce.rds")
+

@@ -939,7 +939,7 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-scaledNb.IPM <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
+YKD.constant.4.5 <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
