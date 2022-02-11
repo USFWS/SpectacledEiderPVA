@@ -27,8 +27,7 @@ library(jagsUI)
 K <- 79 # (count) data observed through 2021
 
 # Count Data, 1988 - 2021
-counts <- read.csv("input_data/YKD_SPEI.csv", header = T) # note that 2011 and 2020
-# added to the csv with NA for count data prior to import
+counts <- read.csv("input_data/YKD_SPEI.csv", header = T)
 observer <- c(1, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 4, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3,
               5, 5, 5, 5, 5, 5, 5)
 
@@ -120,7 +119,7 @@ jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.
                      nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
                      SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
-                     count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
+                     count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb, vcf = counts$mvcf,
                      nest.obs.a = fecund.param$ns.obs.alpha[1:23],
                      nest.obs.b = fecund.param$ns.obs.beta[1:23],
                      K = K, BEFORE = 4, AFTER = 6) 
@@ -131,7 +130,7 @@ jags.data8.5 <- list(ext.obs.ice = ext.ice.data8.5, min.obs.ice = min.ice.data8.
                      nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
                      SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
-                     count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb,
+                     count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb, vcf = counts$mvcf,
                      nest.obs.a = fecund.param$ns.obs.alpha[1:23],
                      nest.obs.b = fecund.param$ns.obs.beta[1:23],
                      K = K, BEFORE = 4, AFTER = 4) 
@@ -160,6 +159,9 @@ model {
 # state-space
 sigma.obs[24] ~ dunif(500, 1400) # 2011; bounds consistent with s.e. observed since 2005
 sigma.obs[33] ~ dunif(500, 1400) # 2020; bounds consistent with s.e. observed since 2005
+
+vcf[24] ~ dunif(2.1, 2.4) # 2011; bounds consistent with s.e. observed since 2005
+vcf[33] ~ dunif(2.1, 2.4) # 2020; bounds consistent with s.e. observed since 2005
 
 # adding noise to the ice predictions s.t. interannual variation in the 
 # future is consistent with the observed time series (1980 - 2018)
@@ -260,9 +262,11 @@ sigma.o ~ dgamma(1, 10)
 for(i in 1:5){
   o[i] ~ dnorm(0, tau.o)
 } # i
-for (t in 1:(n.occasions+BEFORE+AFTER)){ 
-  d[t] ~ dgamma(3.28, 4.29) # from EE, see ObsPriors.R
-  count[t] ~ dnorm(2*exp(log(N[3,t] + N[4,t]) - o[obs[t]] - d[t]), tau.obs[t]) # count provided as data
+for (t in 1:(n.occasions+BEFORE+AFTER)){
+  dev[t] ~ dbeta(2.16, 11.56) # from EE, see ObsPriors.R
+  sign[t] ~ dbin(0.5, 1)
+  d[t] <- ifelse(sign[t] == 1, dev[t], -dev[t])
+  count[t] ~ dnorm(2*exp(log(N[3,t] + N[4,t]) - o[obs[t]] - log(1 + vcf[t]*d[t])), tau.obs[t]) # count provided as data
   tau.obs[t] <- pow(sigma.obs[t], -2) # sigma.obs provided as data
 } # t
 
