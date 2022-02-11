@@ -148,7 +148,7 @@ parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha",
                 "betaBP")
 
 # MCMC settings
-ni <- 50000; nt <- 1; nb <- 10000; nc <- 3 # up'd iterations from 20K
+ni <- 20000; nt <- 1; nb <- 10000; nc <- 3
 
 
 ### Lead Constant, RCP4.5
@@ -263,7 +263,7 @@ for(i in 1:5){
   o[i] ~ dnorm(0, tau.o)
 } # i
 for (t in 1:(n.occasions+BEFORE+AFTER)){
-  dev[t] ~ dbeta(2.16, 11.56) T(,0.42) # from EE, see ObsPriors.R
+  dev[t] ~ dbeta(2.16, 11.56) T(,0.41) # from EE, see ObsPriors.R
   sign[t] ~ dbin(0.5, 1)
   d[t] <- ifelse(sign[t] == 1, dev[t], -dev[t])
   count[t] ~ dnorm(2*exp(log(N[3,t] + N[4,t]) - o[obs[t]] - log(1 + vcf[t]*d[t])), tau.obs[t]) # count and vcf provided as data
