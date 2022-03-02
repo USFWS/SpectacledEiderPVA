@@ -475,12 +475,22 @@ ggplot(traj, aes(x = Year, y = Nb/1000, col = Sim)) +
 
 #now plot d
 pred.quant <- apply(post$pd2, 2, quantile, probs=c(0.025,0.25,0.5,0.75,0.975))
-
 plot(x=c(1988:2021), y=pred.quant[3,], type="p", pch=21, bg='black',
-     main="Annual detection variation", xlab="", ylab="", 
+     main=" 'Big' detection variation (pd2)", xlab="", ylab="", 
      ylim=c(min(pred.quant, na.rm = TRUE),max(pred.quant, na.rm = TRUE)))
 grid(col="darkgray")
 polygon(x=c(1988:2021,rev(1988:2021)), # 95% CI
         y=c(pred.quant[1,],rev(pred.quant[5,])), col=rgb(1,0,0, alpha=0.25), border=FALSE)
 polygon(x=c(1988:2021,rev(1988:2021)), #50% CI
         y=c(pred.quant[2,],rev(pred.quant[4,])), col=rgb(1,0,0, alpha=0.25), border=FALSE)
+
+pred.quant <- apply(post$pd, 2, quantile, probs=c(0.025,0.25,0.5,0.75,0.975))
+plot(x=c(1988:2021), y=pred.quant[3,], type="p", pch=21, bg='black',
+     main=" 'Annual detection variation (pd)", xlab="", ylab="", 
+     ylim=c(min(pred.quant, na.rm = TRUE),max(pred.quant, na.rm = TRUE)))
+grid(col="darkgray")
+polygon(x=c(1988:2021,rev(1988:2021)), # 95% CI
+        y=c(pred.quant[1,],rev(pred.quant[5,])), col=rgb(1,0,0, alpha=0.25), border=FALSE)
+polygon(x=c(1988:2021,rev(1988:2021)), #50% CI
+        y=c(pred.quant[2,],rev(pred.quant[4,])), col=rgb(1,0,0, alpha=0.25), border=FALSE)
+

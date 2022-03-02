@@ -28,10 +28,12 @@ hist(rbeta(10000, par[[1]], par[[2]]))
 # response for any given model-predicted expectation mu. This causes lower predictions of mu to be 
 # favored in the draw of the MCMC chain. The observer effect, however, is estimated as an average 
 # effect of an observer over the multiple years. 
-# 
-# Should variation in d add to sigma_obs? Is what we are doing equivalent? 
-
-#Below is just exploratory and assume d = 0.5
+#
+# One the log scale, we add - log(1 + vcf[t]*d[t]) to the linear predictor, where vcf[t] is 
+#  the average vcf for year t (averaged across the 4 eider strata, see Lewis 2019). 
+#  vcf[t] is calculated as Nibb[t]/Y[t], where Nibb is from Lewis and Y is the observed index.  
+#
+#Below is just exploratory and assumes d = 0.5
 x <- rbeta(100000, par[[1]], par[[2]])
 x <- x[x<0.5]
 hist(x) #this is what we elicited in question 9
@@ -64,4 +66,23 @@ hist(x, xlim=c(-1, 4), breaks=100)
 par4 <- get.gamma.par(p=quants, q=quantile(x-log(0.5), probs=quants))
 hist(rgamma(10000, par4[[1]], par4[[2]]) + log(0.5) )
 
-
+#Explore the effects of d on the expected population size and counts:
+counts <- read.csv("input_data/YKD_SPEI.csv", header = T)
+Nsim <- 1000
+d <- rbeta(length(counts$Nibb)*Nsim, par[[1]], par[[2]])
+d <- ifelse(runif(length(counts$Nibb)*Nsim)<0.5, 1, -1)*d
+d <- matrix(d, Nsim, length(counts$Nibb))
+n <- matrix(counts$Nibb, Nsim, length(counts$Nibb), byrow=TRUE)
+jit <- 0.2
+vcf <- matrix(counts$mvcf, Nsim, length(counts$Nibb), byrow=TRUE)
+nibb <- exp(log(n) - log(1 + vcf*d))
+mnibb <- apply(nibb, 2, mean, na.rm=TRUE)
+pnibb <- apply(nibb, 2, quantile, probs=c(0.025, 0.975), na.rm=TRUE)
+plot(1:34-jit, counts$Nibb, pch=16, ylim=c(0, 30000))
+points(1:34+jit, mnibb, pch=1)
+arrows(x0=1:34+jit, y0=pnibb[1,], y1=pnibb[2,], length=0, col="lightgray")
+arrows(x0=1:34-jit, y0=counts$Nibb-2*counts$seNibb, y1=counts$Nibb+2*counts$seNibb, length=0, col="lightgray")
+#Jensen's gap = exp(mu)*(exp(vd/2) - 1)
+vd <- apply( - log(1 + vcf*d), 2, var, na.rm=TRUE)
+jg <- counts$Nibb*(exp(vd/2) - 1)
+points(1:34+jit, mnibb - jg, pch=2)
