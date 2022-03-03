@@ -82,3 +82,23 @@ df <- df %>%
 fitlm <- lm(logitPhi~Age+ice.min.s+ice.ext.s+I(ice.ext.s^2), data=df)
 summary(fitlm)
 vcov(fitlm)
+
+#Use PCA to make orthogonal covariates between min and ext ice
+# first find PCA based on all ice data
+ext.sea.ice <- read.csv("input_data/extreme.sea.ice.csv", header = T)
+min.sea.ice <- read.csv("input_data/minimal.sea.ice.csv", header = T)
+plot(ext.sea.ice$ice.obs, min.ice$ice.obs, pch=16, ylim=c(0, 200))
+points(ext.sea.ice$ice.RCP4.5, min.ice$ice.RCP4.5, pch=1)
+points(ext.sea.ice$ice.RCP8.5, min.ice$ice.RCP8.5, pch=2)
+df2 <- ext.sea.ice %>% pivot_longer(cols=2:4, names_to = "type", values_to="ext") %>%
+  filter(!is.na(ext))
+df3 <- min.sea.ice %>% pivot_longer(cols=2:4, names_to = "type", values_to="min") %>%
+  filter(!is.na(min)) %>%
+  left_join(df2, by=c("year", "type")) 
+df2 <- df3
+rm(df3)
+pca <- princomp(formula=~ext+min, data=df2)
+plot(df2$ext, df2$min, pch=16)
+ext1 <- c(0, 80)
+min1 <- (pca$loadings[1,1]/pca$loadings[2,1])*ext1 + pca$center[2]
+lines(ext1, min1)
