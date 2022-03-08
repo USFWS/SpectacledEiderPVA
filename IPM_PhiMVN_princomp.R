@@ -81,6 +81,14 @@ ns <- 5
 #lead.exposure$delta.2026 <- c(diff(lead.exposure$exp.2026), NA)
 sea.ice <- read.csv("input_data/sea.ice.data.csv", header = T)
 # year is winter year (Nov - Apr)
+#principal components for sea ice
+dfmin <- tidyr::pivot_longer(sea.ice, cols=2:4, names_to="type", values_to="min") %>%
+  drop_na() %>% select(year, type, min)
+dfext <- tidyr::pivot_longer(sea.ice, cols=5:7, names_to="type", values_to="ext") %>%
+  drop_na() %>% select(year, type, ext)
+df <- left_join(dfmin, dfext, by=c("year")) %>% drop_na()
+rm(dfmin, dfext)
+pca <- princomp(formula=~min+ext, data=df)
 
 # subsetting years 1988 to 2100
 ice.data <- sea.ice[sea.ice$year >= 1988 & sea.ice$year <= 2100,]
@@ -92,9 +100,6 @@ min.ice.data4.5 <- ifelse(is.na(ice.data$min.ice.obs), ice.data$min.ice.RCP4.5,
                           ice.data$min.ice.obs)
 min.ice.data8.5 <- ifelse(is.na(ice.data$min.ice.obs), ice.data$min.ice.RCP8.5, 
                           ice.data$min.ice.obs)
-pca.ice4.5 <- princomp(formula=~ext.ice.RCP4.5+min.ice.RCP4.5, data=ice.data)
-out <- readRDS("CMR.GAM.rds")
-
 
 # Fecundity Data, 1992 - 2015
 fecund.param <- read.csv("input_data/fecundity.csv", header = T)
@@ -112,7 +117,7 @@ SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
                     0.0186, 0.0197), nrow = 3, ncol = 3)
 
 # from CJS only model, mean and VCV for phi ice covariates (order is Intercept (Agephi0), 
-# AgePhiA additive effect, ice.min.s, ice.ext.s, and ice.ext.s^2)
+# AgePhiA additive effect, pca.ice, and pca.ice^2)
 muPhi <- c(-0.9621, 2.7400, -0.1585, -0.2699, -0.2384)
 SigmaPhi <- matrix(c(0.0299, -0.0201, 0.0113, 0.0039, -0.0100, -0.0201, 0.0402, 
                      0, 0, 0, 0.0113, 0, 0.0544, 0.0404, -0.0116, 0.0039, 0, 0.0404,
@@ -121,6 +126,7 @@ SigmaPhi <- matrix(c(0.0299, -0.0201, 0.0113, 0.0039, -0.0100, -0.0201, 0.0402,
 
 #### JAGS set up
 jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.5, 
+                     pca = pca$loadings[,1], 
                      nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
                      SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
@@ -131,7 +137,8 @@ jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.
                      # BEFORE = no. of count years before survival data (4)
                      # AFTER = no. of count years after survival data
 
-jags.data8.5 <- list(ext.obs.ice = ext.ice.data8.5, min.obs.ice = min.ice.data8.5,
+jags.data8.5 <- list(ext.obs.ice = ext.ice.data8.5, min.obs.ice = min.ice.data8.5, 
+                     pca = pca$loadings[,1], 
                      nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
                      SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
@@ -172,15 +179,16 @@ vcf[33] ~ dunif(2.1, 2.4) # 2020; bounds consistent with s.e. observed since 200
 # future is consistent with the observed time series (1980 - 2018)
 for (i in 1:(K+1)){
   ext.nb.prob[i] <- nb.size/(ext.obs.ice[n.occasions + BEFORE + AFTER - 1 + i] + nb.size) 
-  ext.ice.draw[i] ~ dnegbin(ext.nb.prob[i], nb.size)
+  ext.ice.draw[i] ~ dnegbin(ext.nb.prob[i], nb.size) T(0, 181)
   min.nb.prob[i] <- nb.size/(min.obs.ice[n.occasions + BEFORE + AFTER - 1 + i] + nb.size) 
-  min.ice.draw[i] ~ dnegbin(min.nb.prob[i], nb.size)
+  min.ice.draw[i] ~ dnegbin(min.nb.prob[i], nb.size) T(0, 181 - ext.ice.draw[i])
 } # i
     
 ext.ice.new <- c(ext.obs.ice[1:(n.occasions - 1 + BEFORE + AFTER)], ext.ice.draw[])
 ext.ice <- (ext.ice.new - mean(ext.ice.new))/sd(ext.ice.new)
 min.ice.new <- c(min.obs.ice[1:(n.occasions - 1 + BEFORE + AFTER)], min.ice.draw[])
 min.ice <- (min.ice.new - mean(min.ice.new))/sd(min.ice.new)
+pca.ice <- min.ice*pca[1] + ext.ice*pca[2]
 
 # lead exposure and decay rate
 theta_0 ~ dbeta(6, 45) # mean of 0.12, with 90% between 0.5 and 0.2
@@ -223,7 +231,7 @@ betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 mean.alpha.inv ~ dgamma(7.1, 1.95) T(1,) # from EE
 mean.logit.alpha <- logit(1/mean.alpha.inv)
 
-betaPhi[1:5] ~ dmnorm.vcov(muPhi[1:5], SigmaPhi[1:5, 1:5])
+betaPhi[1:4] ~ dmnorm.vcov(muPhi[1:4], SigmaPhi[1:4, 1:4])
 
 tau.phi0 <- pow(sigma.phi0, -2)
 sigma.phi0 ~ dunif(0, 1)
@@ -307,17 +315,17 @@ for (t in (1+BEFORE):(BEFORE+n.occasions-1)){
 } # t
 
 for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
-    logit.phi0[t] <- betaPhi[1] + betaPhi[3]*min.ice[t+1] + betaPhi[4]*ext.ice[t+1]
-                     + betaPhi[5]*ext.ice[t+1]*ext.ice[t+1] + eps.phi0[t] 
+    logit.phi0[t] <- betaPhi[1] + betaPhi[3]*pca.ice[t+1]
+                     + betaPhi[4]*pca.ice[t+1]*pca.ice[t+1] + eps.phi0[t] 
     eps.phi0[t] ~ dnorm(0, tau.phi0)
     phi0[t] <- ilogit(logit.phi0[t])
     
     logit.phiA[t] <- logit(ilogit(betaPhi[1] + betaPhi[2])*(1-lead[t]*(1-kappa))) 
-                     + betaPhi[3]*min.ice[t+1] + betaPhi[4]*ext.ice[t+1]
-                     + betaPhi[5]*ext.ice[t+1]*ext.ice[t+1]
+                     + betaPhi[3]*pca.ice[t+1]
+                     + betaPhi[4]*pca.ice[t+1]*pca.ice[t+1]
                      - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t] 
-    logit.phi2[t] <- betaPhi[1] + betaPhi[2] + betaPhi[3]*min.ice[t+1] 
-                     + betaPhi[4]*ext.ice[t+1] + betaPhi[5]*ext.ice[t+1]*ext.ice[t+1] 
+    logit.phi2[t] <- betaPhi[1] + betaPhi[2] + betaPhi[3]*pca.ice[t+1] 
+                     + betaPhi[4]*pca.ice[t+1]*pca.ice[t+1] 
                      - betaN[2]*(N[3,t] + N[4,t])/1000 + eps.phiA[t]
     eps.phiA[t] ~ dnorm(0, tau.phiA)
     phiA[t] <- ilogit(logit.phiA[t])
