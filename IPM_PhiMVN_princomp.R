@@ -88,7 +88,7 @@ dfext <- tidyr::pivot_longer(sea.ice, cols=5:7, names_to="type", values_to="ext"
   drop_na() %>% select(year, type, ext)
 df <- left_join(dfmin, dfext, by=c("year")) %>% drop_na()
 rm(dfmin, dfext)
-pca <- princomp(formula=~min+ext, data=df)
+pca <- princomp(formula=~ext+min, data=df)
 
 # subsetting years 1988 to 2100
 ice.data <- sea.ice[sea.ice$year >= 1988 & sea.ice$year <= 2100,]
@@ -118,7 +118,8 @@ SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
 
 # from CJS only model, mean and VCV for phi ice covariates (order is Intercept (Agephi0), 
 # AgePhiA additive effect, pca.ice, and pca.ice^2)
-muPhi <- c(-0.9621, 2.7400, -0.1585, -0.2699, -0.2384)
+# from GAM branch fitGAMice.R, summary(fitlm1) and vcov(fitlm1)
+muPhi <- c(-1.2009, 2.7400, , -0.2699, -0.2384)
 SigmaPhi <- matrix(c(0.0299, -0.0201, 0.0113, 0.0039, -0.0100, -0.0201, 0.0402, 
                      0, 0, 0, 0.0113, 0, 0.0544, 0.0404, -0.0116, 0.0039, 0, 0.0404,
                      0.0430, -0.0040, -0.0100, 0, -0.0116, -0.0040, 0.0103),
