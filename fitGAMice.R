@@ -2,7 +2,7 @@
 # GAM based on annual estimate from Bayesian CMR model, CMR.jags/CMR_YKD.R
 library(mgcv)
 library(jagsUI)
-library(dplyr)
+library(tidyverse)
 out <- readRDS(file="CMR.GAM.rds")
 
 plot(1:23, out$mean$phiA, ylim=c(0.5, 1))
@@ -87,9 +87,9 @@ vcov(fitlm)
 # first find PCA based on all ice data
 ext.sea.ice <- read.csv("input_data/extreme.sea.ice.csv", header = T)
 min.sea.ice <- read.csv("input_data/minimal.sea.ice.csv", header = T)
-plot(ext.sea.ice$ice.obs, min.ice$ice.obs, pch=16, ylim=c(0, 200))
-points(ext.sea.ice$ice.RCP4.5, min.ice$ice.RCP4.5, pch=1)
-points(ext.sea.ice$ice.RCP8.5, min.ice$ice.RCP8.5, pch=2)
+plot(ext.sea.ice$ice.obs, min.sea.ice$ice.obs, pch=16, ylim=c(0, 200))
+points(ext.sea.ice$ice.RCP4.5, min.sea.ice$ice.RCP4.5, pch=1)
+points(ext.sea.ice$ice.RCP8.5, min.sea.ice$ice.RCP8.5, pch=2)
 df2 <- ext.sea.ice %>% pivot_longer(cols=2:4, names_to = "type", values_to="ext") %>%
   filter(!is.na(ext))
 df3 <- min.sea.ice %>% pivot_longer(cols=2:4, names_to = "type", values_to="min") %>%
@@ -98,7 +98,84 @@ df3 <- min.sea.ice %>% pivot_longer(cols=2:4, names_to = "type", values_to="min"
 df2 <- df3
 rm(df3)
 pca <- princomp(formula=~ext+min, data=df2)
-plot(df2$ext, df2$min, pch=16)
-ext1 <- c(0, 80)
-min1 <- (pca$loadings[1,1]/pca$loadings[2,1])*ext1 + pca$center[2]
-lines(ext1, min1)
+plot(df2$ext, df2$min, pch=1)
+x=100
+arrows(x0=pca$loadings[1,1]*(-x) + pca$center[1], x1=pca$loadings[1,1]*x + pca$center[1], 
+       y0=pca$loadings[2,1]*(-x) + pca$center[2], y1=pca$loadings[2,1]*x + pca$center[2],
+       length=0)
+x=10
+arrows(x0=pca$loadings[1,2]*(-x) + pca$center[1], x1=pca$loadings[1,2]*x + pca$center[1], 
+       y0=pca$loadings[2,2]*(-x) + pca$center[2], y1=pca$loadings[2,2]*x + pca$center[2],
+       length=0)
+
+points(pca$center[1], pca$center[2], pch=16, col="red")
+
+plot(pca$scores[,1], pca$scores[,2])
+pca$loadings
+#compute pca scores from scratch
+scores <- scale(as.matrix(df2[,c("ext", "min")]), scale=FALSE)%*%pca$loadings
+
+
+#fit linear model to pca scores
+df <- df2 %>% 
+  bind_cols(data.frame(pc1=pca$scores[,1], pc2=pca$scores[,2])) %>%
+  filter(year > 1992 & year < 2016, type == "ice.obs") %>%
+  bind_cols(data.frame(PhiA=out$mean$phiA), data.frame(Phi0=out$mean$phi0)) %>%
+  pivot_longer(cols=c(7,8), names_to="Age", values_to="Phi") %>% 
+  mutate(logitPhi=qlogis(Phi), ice.min.s=scale(min), ice.ext.s=scale(ext)) 
+ggplot(data=df) + geom_point(aes(x=ext, y=min))
+ggplot(data=df) + geom_point(aes(x=pc1, y=pc2, col="red"))
+ggplot(data = df) + 
+  geom_point(aes(x=pc1, y=Phi, col=Age)) + 
+  geom_smooth(aes(x=pc1, y=Phi, col=Age), method="gam")
+ggplot(data = df) + 
+  geom_point(aes(x=pc2, y=Phi, col=Age)) + 
+  geom_smooth(aes(x=pc2, y=Phi, col=Age), method="gam")
+
+fitgam <- gam(logitPhi~Age+s(pc1, pc2, k=10), data=df)
+summary(fitgam)
+vis.gam(fitgam, view=c("pc1", "pc2"), plot.type = "contour")
+points(df$pc1, df$pc2)
+
+fitlm1 <- lm(logitPhi~Age+pc1+I(pc1^2), data=df)
+fitlm2 <- lm(logitPhi~Age+pc1+pc2+I(pc1^2), data=df)
+fitlm3 <- lm(logitPhi~Age+pc1+pc2+I(pc1^2) + I(pc2^2), data=df)
+fitlm4 <- lm(logitPhi~Age+pc1+pc2+I(pc1^2) + I(pc2^2) + I(pc1^2):I(pc2^2), data=df)
+
+lapply(list(fitlm1, fitlm2, fitlm3, fitlm4), summary)
+AIC(fitlm1, fitlm2, fitlm3, fitlm4)
+vcov(fitlm1)
+
+#Is the pca any better than just ext ice?
+fitlm5 <- lm(logitPhi~Age+ext+I(ext^2), data=df)
+fitlm6 <- lm(logitPhi~Age+min+I(min^2), data=df)
+fitlm7 <- lm(logitPhi~Age+ext+min+I(ext^2) + I(min^2), data=df)
+AIC(fitlm1, fitlm5, fitlm6, fitlm7)
+
+#ggplots
+ggplot(data=df2) + 
+  geom_point(data=df, aes(x=ext, y=min, shape="open circle", size=1)) + 
+  geom_point(aes(x=ext, y=min, col=type)) + 
+  geom_text(data = df2, aes(x=ext, y=min, label=year), 
+    nudge_x = 0.25, nudge_y = 0.25, 
+    check_overlap = T) + 
+  geom_segment(aes(x=0, y=180, xend=180, yend=0))
+
+#all obs ice
+df3 <- filter(df2, type == "ice.obs")
+ggplot(data=df) + 
+  geom_point(aes(x=ext, y=min, col=type)) + 
+  # geom_text(data = df2, aes(x=ext, y=min, label=year), 
+  #           nudge_x = 0.25, nudge_y = 0.25, 
+  #           check_overlap = T) + 
+  geom_segment(aes(x=0, y=180, xend=180, yend=0))
+pca <- princomp(formula=~ext+min, data=df3)
+
+df3 <- df2 %>% pivot_wider(names_from = type, values_from = c("min", "ext")) %>%
+  drop_na()
+p1 <- ggplot(data = df2) +
+  geom_point(aes(x=year, y=min, col=type))
+p2 <- ggplot(data = df2) +
+  geom_point(aes(x=year, y=ext, col=type))
+ggpubr::ggarrange(p1, p2, ncol=1)
+#use pca of ext and min ice projections in linear predictor.
