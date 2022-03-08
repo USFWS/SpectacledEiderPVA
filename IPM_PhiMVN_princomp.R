@@ -119,11 +119,17 @@ SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
 # from CJS only model, mean and VCV for phi ice covariates (order is Intercept (Agephi0), 
 # AgePhiA additive effect, pca.ice, and pca.ice^2)
 # from GAM branch fitGAMice.R, summary(fitlm1) and vcov(fitlm1)
-muPhi <- c(-1.2009, 2.7400, , -0.2699, -0.2384)
-SigmaPhi <- matrix(c(0.0299, -0.0201, 0.0113, 0.0039, -0.0100, -0.0201, 0.0402, 
-                     0, 0, 0, 0.0113, 0, 0.0544, 0.0404, -0.0116, 0.0039, 0, 0.0404,
-                     0.0430, -0.0040, -0.0100, 0, -0.0116, -0.0040, 0.0103),
-                   nrow = 5, ncol = 5)
+out <- readRDS(file="CMR.GAM.rds")
+df <- df %>% bind_cols(data.frame(pc1 = pca$scores[,1])) %>% 
+  filter(year > 1992 & year < 2016, type.x == "min.ice.obs" & type.y == "ext.ice.obs") %>%
+  bind_cols(data.frame(PhiA = qlogis(out$mean$phiA), Phi0 = qlogis(out$mean$phi0))) %>%
+  select(year, pc1, PhiA, Phi0) %>%
+  tidyr::pivot_longer(cols=3:4, names_to = "Age", values_to = "Phi")
+
+fit <- lm(Phi ~ Age + pc1 + I(pc1^2), data=df)
+              
+muPhi <- coef(fit)
+SigmaPhi <- vcov(fit)
 
 #### JAGS set up
 jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.5, 
@@ -446,9 +452,9 @@ YKD.constant.4.5.PhiMVN <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags",
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
                          parallel = TRUE, n.adapt = 1000)
 
-saveRDS(YKD.constant.4.5.PhiMVN, file = "MS_Scenarios/YKD.constant.4.5.PhiMVN_test_d.rds")
+saveRDS(YKD.constant.4.5.PhiMVN, file = "MS_Scenarios/YKD.constant.4.5.PhiMVN_pca.rds")
 out <- YKD.constant.4.5.PhiMVN
-out <- readRDS(file = "MS_Scenarios/YKD.constant.4.5.PhiMVN_test_d.rds")
+out <- readRDS(file = "MS_Scenarios/YKD.constant.4.5.PhiMVN_pca.rds")
 
 #Plot
 library(tidyverse)
