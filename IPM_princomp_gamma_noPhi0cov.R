@@ -73,13 +73,7 @@ ms.arr <- marray(ch)
 # number of states for the multistate mark-recapture analysis
 ns <- 5
 
-# Survival Covariates, 1988 - 2100
-# lead exposure rates calculated in the model
-#lead.exposure <- read.csv("input_data/lead.exposure.csv", header = T)
-#lead.exposure <- lead.exposure[1:113,]
-#lead.exposure$delta.const <- c(diff(lead.exposure$const.exp), NA)
-#lead.exposure$delta.2008 <- c(diff(lead.exposure$exp.2008), NA)
-#lead.exposure$delta.2026 <- c(diff(lead.exposure$exp.2026), NA)
+# Sea Ice
 sea.ice <- read.csv("input_data/sea.ice.data.csv", header = T)
 # year is winter year (Nov - Apr)
 #principal components for sea ice
@@ -120,17 +114,17 @@ SigmaBP <- matrix(c(0.3121, -0.0465, -0.0671, -0.0465, 0.0400, 0.0186, -0.0671,
 # from CJS only model, mean and VCV for phi ice covariates (order is Intercept (Agephi0), 
 # AgePhiA additive effect, pca.ice, and pca.ice^2)
 # from GAM branch fitGAMice.R, summary(fitlm1) and vcov(fitlm1)
-out <- readRDS(file="CMR.GAM.rds")
-df <- df %>% bind_cols(data.frame(pc1 = pca$scores[,1])) %>% 
-  filter(year > 1992 & year < 2016, type.x == "min.ice.obs" & type.y == "ext.ice.obs") %>%
-  bind_cols(data.frame(PhiA = qlogis(out$mean$phiA), Phi0 = qlogis(out$mean$phi0))) %>%
-  select(year, pc1, PhiA, Phi0) %>%
-  tidyr::pivot_longer(cols=3:4, names_to = "Age", values_to = "Phi")
+# out <- readRDS(file="CMR.GAM.rds")
+# df <- df %>% bind_cols(data.frame(pc1 = pca$scores[,1])) %>% 
+#   filter(year > 1992 & year < 2016, type.x == "min.ice.obs" & type.y == "ext.ice.obs") %>%
+#   bind_cols(data.frame(PhiA = qlogis(out$mean$phiA), Phi0 = qlogis(out$mean$phi0))) %>%
+#   select(year, pc1, PhiA, Phi0) %>%
+#   tidyr::pivot_longer(cols=3:4, names_to = "Age", values_to = "Phi")
 
-fit <- lm(Phi ~ Age + pc1 + I(pc1^2), data=df)
-              
-muPhi <- coef(fit)
-SigmaPhi <- vcov(fit)
+# fit <- lm(Phi ~ Age + pc1 + I(pc1^2), data=df)
+#               
+# muPhi <- coef(fit)
+# SigmaPhi <- vcov(fit)
 
 #### JAGS set up
 jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.5, 
@@ -165,13 +159,13 @@ inits <- function(){list(
   mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
 
 # parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha", 
-                "mean.log.F", "betaN", "betaPhi", "sigma.o", "pd", "o", "sign2",
-                "pd2", "pext", "betaBP", "sigma.phi0", "sigma.phiA", "phi.corr",
-                "sigma.p")
+parameters <- c("mean.phi0", "mean.phiA", "mean.log.F", "betaN", "betaPhi", "sigma.o", 
+                "betaBP", "sigma.phi0", "sigma.phiA", "phi.corr",
+                "sigma.p", "beta.nest","Nb", "phiA", "phi0", "F",  "alpha", 
+                 "pd", "o", "sign2","pd2", "pext",  "BP", "p")
 
 # MCMC settings
-ni <- 2000; nt <- 1; nb <- 1000; nc <- 3 
+ni <- 60000; nt <- 1; nb <- 30000; nc <- 3 
 
 
 ### Lead Constant, RCP4.5
@@ -199,7 +193,8 @@ ext.ice.new <- c(ext.obs.ice[1:(n.occasions - 1 + BEFORE + AFTER)], ext.ice.draw
 ext.ice <- (ext.ice.new - mean(ext.ice.new))/sd(ext.ice.new)
 min.ice.new <- c(min.obs.ice[1:(n.occasions - 1 + BEFORE + AFTER)], min.ice.draw[])
 min.ice <- (min.ice.new - mean(min.ice.new))/sd(min.ice.new)
-pca.ice <- ext.ice*pca[1] + min.ice*pca[2]
+pca.ice.new <- ext.ice.new*pca[1] + min.ice.new*pca[2]
+pca.ice <- (pca.ice.new - mean(pca.ice.new))/sd(pca.ice.new)
 
 # lead exposure and decay rate
 theta_0 ~ dbeta(6, 45) # mean of 0.12, with 90% between 0.5 and 0.2
@@ -234,6 +229,8 @@ mean.log.F ~ dnorm(-0.47,100)
 betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 #tau.BP <- pow(sigma.BP, -2)
 #sigma.BP ~ dunif(0,1)
+
+# density-dependence
 for (i in 1:2){
 betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 } #i
@@ -311,8 +308,6 @@ for (t in 1:(n.occasions+BEFORE+AFTER)){
   tau.obs[t] <- pow(sigma.obs[t], -2) # sigma.obs provided as data
 } # t
 
-####START HERE####
-
 ## Fecundity Model
 # Process model
 for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here # should go to end - 1
@@ -339,6 +334,7 @@ for (t in (1+BEFORE):(BEFORE+n.occasions-1)){
 
 for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
     eps.phi[1:2,t] ~ dmnorm.vcov(phi.mu[1:2], phi.sigma[1:2, 1:2])
+    
     logit.phi0[t] <- mean.logit.phi0 + eps.phi[1,t] 
     phi0[t] <- ilogit(logit.phi0[t])
     
@@ -465,8 +461,8 @@ for (t in 1:K){ # extended loop here
 # Call JAGS from R (jagsUI), use autojags to run to convergence
 out <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
-                         parallel = TRUE, n.adapt = 1000)
-out <- update(hold, n.iter = 20000)
+                         parallel = TRUE)
+
 
 saveRDS(out, file = "MS_Scenarios/YKD.constant.pca.gamma.noPhi0cov.rds")
 out <- hold
