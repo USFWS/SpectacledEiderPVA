@@ -127,7 +127,7 @@ df <- df %>% bind_cols(data.frame(pc1 = pca$scores[,1])) %>%
   select(year, pc1, PhiA, Phi0) %>%
   tidyr::pivot_longer(cols=3:4, names_to = "Age", values_to = "Phi")
 
-fit <- lm(Phi ~ Age + pc1 + I(pc1^2), data=df)
+fit <- lm(Phi ~ Age + scale(pc1) + I(scale(pc1)^2), data=df)
               
 muPhi <- coef(fit)
 SigmaPhi <- vcov(fit)
@@ -135,8 +135,9 @@ SigmaPhi <- vcov(fit)
 #### JAGS set up
 jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.5, 
                      pca = pca$loadings[,1], 
-                     nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
-                     SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
+                     nb.size = 4, 
+                     muBP = muBP, SigmaBP=SigmaBP, 
+                     muPhi = muPhi,SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                      count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb, vcf = counts$mvcf,
                      nest.obs.a = fecund.param$ns.obs.alpha[1:23],
@@ -147,13 +148,14 @@ jags.data4.5 <- list(ext.obs.ice = ext.ice.data4.5, min.obs.ice = min.ice.data4.
 
 jags.data8.5 <- list(ext.obs.ice = ext.ice.data8.5, min.obs.ice = min.ice.data8.5, 
                      pca = pca$loadings[,1], 
-                     nb.size = 4, muBP = muBP, SigmaBP=SigmaBP, muPhi = muPhi,
-                     SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
+                     nb.size = 4, 
+                     muBP = muBP, SigmaBP=SigmaBP, 
+                     muPhi = muPhi, SigmaPhi = SigmaPhi, marr = ms.arr, n.occasions = ncol(ch), rel = rowSums(ms.arr), 
                      ns = ns, zero = matrix(0, ncol = ns, nrow = ns), ones = diag(ns), 
                      count = counts$Nibb, obs = observer, sigma.obs = counts$seNibb, vcf = counts$mvcf,
                      nest.obs.a = fecund.param$ns.obs.alpha[1:23],
                      nest.obs.b = fecund.param$ns.obs.beta[1:23],
-                     K = K, BEFORE = 4, AFTER = 4) 
+                     K = K, BEFORE = 4, AFTER = 6) 
                      # BEFORE = no. of count years before survival data (4)
                      # AFTER = no. of count years after survival data
 
@@ -163,16 +165,16 @@ inits <- function(){list(
   mean.phiA = runif(1, 0.8, 0.9), mean.p = runif(1, 0.5, 0.6))}
 
 # parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "alpha", 
-                "mean.log.F", "betaN", "betaPhi", "sigma.o", "pd", "o", "sign2",
-                "pd2", "pext", "betaBP", "sigma.phi0", "sigma.phiA", "phi.corr",
-                "sigma.p")
+parameters <- c("mean.phi0", "mean.phiA", "mean.log.F", "betaN", "betaPhi", "betaBP", "sigma.o", 
+                "sigma.phi0", "sigma.phiA", "phi.corr",
+                "sigma.p", "beta.nest","Nb", "phiA", "phi0", "F",  "alpha", 
+                "pd", "o", "sign2","pd2", "pext",  "BP", "p")
 
 # MCMC settings
-ni <- 20000; nt <- 1; nb <- 10000; nc <- 3 # up'd iterations from 20K
+ni <- 80000; nt <- 1; nb <- 30000; nc <- 3 # up'd iterations from 20K
 
 
-### Lead Constant, RCP4.5
+### lead constant
 cat(file = "YKD_IPM.jags", "
 model {
 
@@ -197,7 +199,8 @@ ext.ice.new <- c(ext.obs.ice[1:(n.occasions - 1 + BEFORE + AFTER)], ext.ice.draw
 ext.ice <- (ext.ice.new - mean(ext.ice.new))/sd(ext.ice.new)
 min.ice.new <- c(min.obs.ice[1:(n.occasions - 1 + BEFORE + AFTER)], min.ice.draw[])
 min.ice <- (min.ice.new - mean(min.ice.new))/sd(min.ice.new)
-pca.ice <- min.ice*pca[1] + ext.ice*pca[2]
+pca.ice.new <- ext.ice*pca[1] + min.ice*pca[2]
+pca.ice <- (pca.ice.new - mean(pca.ice.new))/sd(pca.ice.new)
 
 # lead exposure and decay rate
 theta_0 ~ dbeta(6, 45) # mean of 0.12, with 90% between 0.5 and 0.2
@@ -207,9 +210,9 @@ decay ~ dnorm(10, 0.1) T(1,) # assumes highly likely decay rate is between 5-15 
 ### 2026, OR CONSTANT LEAD)
 
 # constant lead
-for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){ 
-  lead[i] <- theta_0
-}
+# for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){ 
+#   lead[i] <- theta_0
+# }
 
 # decline in lead beginning in 2008 (21st year)
 #for (i in 1:20){
@@ -220,18 +223,19 @@ for (i in 1: (BEFORE+n.occasions-1+AFTER+K)){
 #} # i
 
 # decline in lead beginning in 2026 (39th year)
-#for (i in 1:38){
-#  lead[i] <- theta_0
-#} # i
-#for (i in 39:(BEFORE+n.occasions-1+AFTER+K)){ 
-#  lead[i] <- 0.5^(1/decay)*lead[i-1]
-#} # i
+for (i in 1:38){
+ lead[i] <- theta_0
+} # i
+for (i in 39:(BEFORE+n.occasions-1+AFTER+K)){
+ lead[i] <- 0.5^(1/decay)*lead[i-1]
+} # i
 
 # productivity
 mean.log.F ~ dnorm(-0.47,100) 
+#mean.logit.BP ~ dnorm(1.3, 10)
 betaBP[1:3] ~ dmnorm.vcov(muBP[1:3], SigmaBP[1:3, 1:3])
 #tau.BP <- pow(sigma.BP, -2)
-#sigma.BP ~ dunif(0,1)
+#sigma.BP ~ dgamma(2, 4)
 for (i in 1:2){
 betaN[i] ~ dgamma(3.1, 251.648) # from EE, see DDpriorsEO.R
 } #i
@@ -304,12 +308,10 @@ for (t in 1:(n.occasions+BEFORE+AFTER)){
   tau.obs[t] <- pow(sigma.obs[t], -2) # sigma.obs provided as data
 } # t
 
-####START HERE####
-
 ## Fecundity Model
 # Process model
 for (t in 1:(n.occasions+BEFORE+AFTER+K-1)){ # extended loop here # should go to end - 1
-  logit.BP[t] <- betaBP[1] + betaBP[2]*ext.ice[t] + betaBP[3]*ext.ice[t]*ext.ice[t] #+ eps.BP[t]
+  logit.BP[t] <- betaBP[1] + betaBP[2]*ext.ice[t] + betaBP[3]*ext.ice[t]*ext.ice[t] #+eps.BP[t] 
   #eps.BP[t] ~ dnorm(0, tau.BP)
   BP[t] <- ilogit(logit.BP[t])
   F[t] <- exp(log(phi0[t] + (1-phi0[t])*omegaJ) + mean.log.F 
@@ -348,8 +350,7 @@ for (t in 1:(n.occasions - 1 + BEFORE + AFTER + K)){
     
     phi1[t] <- phi2[t]
     
-    logit.alpha[t] <- mean.logit.alpha
-    alpha[t] <- ilogit(logit.alpha[t])
+    alpha[t] <- ilogit(mean.logit.alpha)
 } # t
 
 for (t in 1:(n.occasions - 1)){
@@ -456,13 +457,13 @@ for (t in 1:K){ # extended loop here
 ")
 
 # Call JAGS from R (jagsUI), use autojags to run to convergence
-YKD.constant.4.5.PhiMVN <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
+out <- jags(jags.data4.5, inits, parameters, "YKD_IPM.jags", 
                          n.chains = nc, n.burnin=nb, n.iter = ni,  
-                         parallel = TRUE, n.adapt = 1000)
+                         parallel = TRUE)
+#out2 <- update(out, n.iter = 20000, save.all.iter = TRUE)
+saveRDS(out, file = "MS_Scenarios/YKD.L2026.RCP4.5.rds")
 
-saveRDS(YKD.constant.4.5.PhiMVN, file = "MS_Scenarios/YKD.constant.4.5.MVN_pca_gamma.rds")
-out <- YKD.constant.4.5.PhiMVN
-#out <- update(out, n.iter = 10000)
+
 #out <- readRDS(file = "MS_Scenarios/YKD.constant.4.5.PhiMVN_pca.rds")
 
 #Plot
