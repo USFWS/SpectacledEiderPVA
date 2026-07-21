@@ -8,5 +8,8 @@
 *.xlsx
 *.rds
 *.jags
+*.tiff
+*.docx
+*.csv
 MS_Scenarios/**
 
