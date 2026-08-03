@@ -12,4 +12,5 @@
 *.docx
 *.csv
 MS_Scenarios/**
-
+input_data/**
+raw_data/**
