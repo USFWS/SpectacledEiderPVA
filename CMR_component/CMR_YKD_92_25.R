@@ -494,6 +494,7 @@ out <- jags(
   parallel = TRUE
 )
 Sys.time() - time
+saveRDS(out, "CMR.missing.RDS")
 out$mean
 plot_results(out)
 plot(1992:2025, counts)

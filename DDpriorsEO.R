@@ -55,7 +55,7 @@ Btest = function(betaN=0.01, N=12500){
 optimize(f=Atest, interval = c(0, 1e7), betaN = 0.0001)
 
 optimize(f=Btest, interval = c(0, 0.1), N=12500)
-
+#-------------------------------------------------------------------------------
 ##relate this to the EE for the ACP
 #high K = 50657 ibb = 50657/2 females = 25328.5
 optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=25329)$minimum
@@ -77,7 +77,7 @@ optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=19300)$minimum
 #low = 8284  females
 optimize(f=Btest, interval = c(0, 0.1), tol=1e-8, N=8284)$minimum
 # [1] 0.02458014
-
+#-------------------------------------------------------------------------------
 
 #now find a distribution that matches the EE
 qmatch.gamma <- function(par=c(3,10000), eeq=c(0.1, 0.7, 2.3), qtarget=c(0.1, 0.5, 0.9)){
@@ -139,12 +139,14 @@ for(i in 1:Nsim){
   K[i] <- optimize(f=Atest, interval = c(0, 1e7), betaN = DD[i])$minimum
 }
 hist(K)
-
+################################################################################
 #try fitting distribution with the package rriskDistributions
+#-------------------------------------------------------------------------------
+#YKD
 library(rriskDistributions)
 fit <- get.gamma.par(p=c(0.1, 0.5, 0.9), q=c(0.005317332, 0.01055036, 0.02458014))
 qgamma(c(0.1, 0.5, 0.9), shape=fit[1], rate=fit[2])
-hist(rgamma(10000, fit[1], fit[2]))
+hist(rgamma(10000, fit[1], fit[2]), breaks = 100)
 # > fit
 # shape       rate 
 # 3.109273 251.648023 
@@ -161,8 +163,17 @@ summary(DD)
 plot(DD, K)
 plot(DD[K<2e6], K[K<2e6])
 max(DD[K<2e6])
-
-#humm, for strong DD, optimization doesn't work. IS there a maximum DD?
+hist(DD[K<2e6])
+#-------------------------------------------------------------------------------
+# ACP
+fit <- get.gamma.par(p=c(0.1, 0.5, 0.9), q=c(0.008039082, 0.01628975, 0.0379043))
+fit
+# shape       rate 
+# 3.023973 158.296488 
+qgamma(c(0.1, 0.5, 0.9), shape=fit[1], rate=fit[2])
+hist(rgamma(10000, fit[1], fit[2]))
+################################################################################
+#humm, for strong DD, optimization doesn't work. Is there a maximum DD?
 lambda = function(N=10000, betaN=0.01){
   ilogit <- function(x){exp(x)/(1+exp(x))}
   BP <- ilogit(2.2) # assumed mean BP was 0.9
@@ -201,7 +212,7 @@ lambda(N=0, betaN=0.04)
 #Take home, use results from quantile matching in rriskDistributions, above
 # shape       rate 
 # 3.109273 251.648023 
-
+#-------------------------------------------------------------------------------
 # Do population projections
 A = function(N=10000, betaN=0.01){
   ilogit <- function(x){exp(x)/(1+exp(x))}
@@ -227,9 +238,44 @@ A = function(N=10000, betaN=0.01){
   return( A )
 }
 T = 1000
-n=matrix(c(1,1,1,1), 4,T)
+#YKD
+#low = ~ 8200; beta = 0.025
+n=matrix(0, 4,T)
+n[,1] <- c(1, 1, 1, 1)
 for(i in 2:T){
-  n[,i] = A(N=sum(n[c(3,4),i]), beta=0.01)%*%n[,i-1]
+  n[,i] = A(N=sum(n[c(3,4),i-1]), betaN=0.005)%*%n[,i-1]
 }
-plot(1:T, colSums(n))
+plot(1:T, colSums(n[3:4,]))
+# Best: N = 19300; beta = 0.01
+n=matrix(0, 4,T)
+n[,1] <- c(1, 1, 1, 1)
+for(i in 2:T){
+  n[,i] = A(N=sum(n[c(3,4),i-1]), betaN=0.01)%*%n[,i-1]
+}
+plot(1:T, colSums(n[3:4,]))
+# High: N = 38000; beta = 0.005
+n=matrix(0, 4,T)
+n[,1] <- c(1, 1, 1, 1)
+for(i in 2:T){
+  n[,i] = A(N=sum(n[c(3,4),i-1]), betaN=0.005)%*%n[,i-1]
+}
+plot(1:T, colSums(n[3:4,]))
+# Now explore the pop size over the whole prior
+nreps = 1000
+#beta <- rgamma(nreps, 3.109273, 251.648023) #from above
+#beta <- (1/exp(rnorm(nreps, 7.95, 3.31)))/1000 #from original SSA
+beta <- (1/rgamma(nreps, 100000, 1))/1000 # from IMP_YKD on GitHub, was this used in 2021?
+hist(beta, breaks = 100)
+pop <- c()
+for( j in 1:nreps){
+  n <- matrix(c(1, 1, 1, 1), 4, 1)
+  for(i in 2:T){
+    n = A(N=sum(n[c(3,4),1]), betaN=beta[j])%*%n
+  }
+  pop[j] <- sum(n[c(3,4),1])
+}
+
+hist(pop)
+hist(log(pop))
+plot(beta, pop)
 

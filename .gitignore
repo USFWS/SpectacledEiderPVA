@@ -14,3 +14,7 @@
 MS_Scenarios/**
 input_data/**
 raw_data/**
+2021_SSA_release/**
+figures/**
+*.html
+SPEI_PVA_IPM_2026_files/

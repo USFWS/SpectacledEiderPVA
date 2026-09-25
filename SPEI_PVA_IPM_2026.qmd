@@ -1,0 +1,1001 @@
+---
+title: "An Integrated Population Model - Population Viability Analysis
+  for Spectacled Eiders (*Somateria fischeri*): 2026 revisions"
+author: "Erik E. Osnas"
+date: "`r Sys.Date()`"
+date-format: "D MMMM YYYY"
+format:
+  pdf:
+    header-includes: |
+      % --- Watermark Configuration ---
+      \usepackage[all]{background}
+      \backgroundsetup{
+        contents=DRAFT -- NOT FOR DISTRIBUTION,
+        color=gray,
+        angle=45,
+        scale=3,
+        opacity=0.2,
+        position=current page.center
+      }
+      
+      % --- Line Numbers Configuration ---
+      \usepackage{lineno}
+      \linenumbers
+bibliography: references.bib
+nocite: |
+  @*
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+
+```{r, message = FALSE, warning = FALSE, echo = FALSE}
+library(jagsUI)
+library(tidyverse)
+library(knitr)
+library(cowplot)
+```
+
+## Introduction
+Here we present a Bayesian population viability analysis (PVA) derived from an integrated population model (IPM) to evaluate the extinction probability of the Yukon-Kuskokwim Delta (YKD) and Arctic Coastal Plain (ACP) populations of spectacled eiders (*Somateria fischeri*). Benefits to building a PVA from an IPM include utilizing both population abundance data and demographic data to more completely describe population dynamics and incorporating model parameter uncertainties into population projections more fully (Oppel et al. 2014; Saunders et al. 2018). For each population, the model generates a distribution of population sizes over time under various scenarios pertaining to lead exposure rates and winter sea ice conditions, factors that previous work suggest are significant to the species. From distribution of population size, the probability of extinction or quasi-extinction, defined by the Spectacled Eider Recovery Plan (USFWS 1996) as breeding population less than 250 individuals, can be estimated. These results will be incorporated into the Species Status Assessment (Smith et al. 2018) for spectacled eiders and used to support a discussion of the populations' current status and resilience to future environmental change.  
+
+Important revisions were made to the original PVA presented in 2021 (Appendix B, USFWS 2021). Most significantly was an update to the mark-recapture model to accommodate missing banding and re-sighting effort for the years 2016-2018, and 2020. There was no known precedent for doing this in the "m-array" format used in this IPM, so a long development and simulation validation was undertaken for this update. Other revisions include changes in model priors to better match the expert elicitation, changes in model priors and structure of the mark-recapture component based on the simulation validations, simplifications in model structure, and new observed ice condition data. These are described below. 
+
+## Life History Model
+The life history model (@fig-lifecycle) is derived from Flint et al. (2016) and Dunham (2019) and describes a pulsed-birth system monitoring pre-breeding females. It tracks four stages: one year old ($n_1$), two year old non-breeders ($n_{2nB}$), two year old breeders ($n_{2B}$), and three years and older ($n_{3+}$). Survival parameters are represented by $\phi$. With the exception of $\phi_0$, survival is annual; $\phi_0$ describes survival from day 30 to 1 year old. $\omega$ represents a correction factor for the estimated survival probabilities to account for permanent emigration from the mark-recapture study area and into the larger population (local dispersal). Because natal site dispersal is thought to be higher than breeding site dispersal, $\omega_J$ and $\omega_A$ are estimated separately for sexually immature and sexually mature classes, respectively. The fecundity parameter, $f$, is composed of breeding propensity, clutch size (female offspring assuming a 0.5 sex ratio), nesting success, and duckling success (survival to day 30). The probability that an $n_1$ female becomes a breeding $n_2$ female, or maturation probability, is given by $\alpha$ and three years and older females are assumed to be sexually mature ($\alpha = 1$). 
+
+Winter sea ice conditions in the overwintering area may impact the survival of juveniles ($\phi_0$) differently from all other age classes ($\phi_1$, $\phi_2$, and $\phi_a$). Only individuals on the breeding grounds ($n_{2B}$ and $n_{3+}$) are exposed to the deleterious effects of lead through $\phi_a$. The fecundity in year $t$ is impacted by the winter sea ice conditions in the previous winter through the breeding propensity of mature females.
+
+![Life history model for a spectacled eider population. $\phi_.^*$ represents estimated survival corrected for estimated local dispersal as $\phi_.^* = \phi_.+(1-\phi.)*\omega.$.](figures/Picture1.png){#fig-lifecycle}
+
+The resulting Lefkovitch transition matrix is:
+
+$$\symbfit{A} = \left[\begin{matrix}
+0 & 0 & f\phi_0^* & f\phi_0^* \\
+\phi_1^*(1-\alpha) & 0 & 0 & 0 \\
+\phi_1^*\alpha & 0 & 0 & 0 \\
+0 & \phi_2^* & \phi_a^* & \phi_a^*
+\end{matrix}\right]$$
+ where $\phi_.^* = \phi_.+(1-\phi.)*\omega.$.
+
+## Data Sources and Use
+Count estimates of indicated breeding birds (twice the number of single males and pairs; USFWS 1987), with associated standard errors, for the YKD are available from 1988–2026 based on an annual aerial survey of the region (data drawn programmatically from the `AKaerial` package (Frost et al. 2026) with visibility adjustments describe in (Lewis et al. 2019, @fig-counts). No estimate is available for 2011 or 2020, and the 2015 estimate is known to be biased low compared to nesting activity (see year-specific estimate for 2015 in Lewis et al. 2019; also see Dunham et al. 2021) and due to low nest success, see below. For the 2026 assessment, all three years (2011, 2015, 2020) are treated as missing in the count likelihood, with a Uniform(800, 1400) prior asserted on the observation standard error in each of those years, consistent with standard errors observed in the recent survey period. Observer identity for each survey year is retained as a covariate; for survey years lacking an assigned observer, the most recent prior observer is carried forward. 
+
+```{r} 
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-counts
+#| fig-cap: "Estimated number of indicated breeding spectacled eiders on the Yukon Kuskokwim Delta, 1988-2019. Error bars represent &plusmn;1 SE. The low estimate in 2015 is represented in red."
+counts.YKD <- read.csv("input_data/YKD_counts_2026.csv", header = T)
+counts.YKD$filtered <- as.factor(ifelse(counts.YKD$Year == 2015, 1, 0))
+ggplot(counts.YKD, aes(x = Year, y = Nibb, col = filtered)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = Nibb - seNibb, ymax = Nibb + seNibb), width = 0.5) +
+  labs(y = "Indicated Breeding Birds") + 
+  theme_classic() + 
+  theme(legend.position = "none") + 
+  scale_color_manual(values=c("black", "red"))
+ggsave("figures/counts.svg")
+ggsave("figures/counts.png")
+ggsave("figures/counts.pdf")
+```
+
+ACP indicated-breeding-bird counts are available 2007–2026, and estimates were sourced from the `AKaerial` package (Frost et al. 2026). Unlike the YKD survey, the ACP survey has no visibility-correction factor; instead, counts are corrected outside the model for a fixed front-seat detection probability of 0.75 (SE 0.05), derived from double-observer estimates (Wilson et al. 2018; Bradley, reported in Osnas 2026: Wilson ≈ 0.75, SE ≈ 0.06; Bradley ≈ 0.74, SE ≈ 0.04). Corrected abundance is $N^{ibb} = ibb/0.75$ with standard error propagated by the delta method (@fig-counts2),
+
+$SE(N^{ibb}) = \sqrt{(ibb/0.75)^2\big[(SE_{ibb}/ibb)^2 + (0.05/0.75)^2\big]}.$
+
+To align the count timeline with the 1992-onward mark–recapture series and the shared IPM index, the 19 pre-survey years (1988–2006) are entered as missing counts. Observation standard errors are therefore estimated (via $\text{Uniform}(800,1400)$ priors) for indices 1:19 (1988–2006), and additionally for 2020 and 2021 (indices 33 and 34), which are missing owing to the COVID-related survey gap. On the ACP survey, estimates come from two observers, the pilot and a right-seat observer, that make up an observer team. For the model using the ACP data, we used observer team as a covariate.   
+
+```{r} 
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-counts2
+#| fig-cap: "Estimated number of indicated breeding spectacled eiders on the Arctic Coastal Plain, 2007 - 2019. Error bars represent &plusmn;1 SE."
+counts.ACP <- read.csv("input_data/ACP_counts_2026.csv", header = T)
+ggplot(counts.ACP, aes(x = Year, y = Nibb)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = Nibb - seNibb, ymax = Nibb + seNibb), width = 0.5) +
+  labs(y = "Indicated Breeding Birds") + 
+  theme_classic() + 
+  theme(legend.position = "none") + 
+  scale_color_manual(values=c("black", "red"))
+ggsave("figures/counts2.svg")
+ggsave("figures/counts2.png")
+ggsave("figures/counts2.pdf")
+```
+
+
+
+The IPM uses data obtained from Kigigak Island to estimate survival probabilities and to assert a prior for average annual fecundity, less breeding propensity. The Kigigak Island time series is longer than that available from Kashunuk (YKD) or Utqiagvik (ACP) and lead exposure on Kigigak Island is much more consistent with that estimated for the entire YKD compared to Kashunuk, based on Flint et al. (2016). Adjustments for parameters from the Kigigak Island study area to the wider YKD and the ACP were made through the inclusion of parameters such as local dispersal ($\omega_.$) and expert elicitation. 
+
+```{r include = FALSE}
+fecund.param <- read.csv("input_data/fecundity.csv", header = T)
+```
+Annual estimates of nest survival and clutch size on Kigigak Island are available from 1992-2004 (Flint et al. 2016), 1992-2015 (Gabrielson and Spragens 2013; Moore and Sowl 2015), and 2019 and 2021 (Friendly et al. 2025; @fig-nest). Those efforts utilized different models for daily survival rates; however, nest success estimates from Flint et al. (2016) and Gabrielson and Spragens (2013) are strongly correlated ($\rho$ = `r round(cor.test(fecund.param$ns.obs.gs,fecund.param$no.obs.f)$estimate, 2)`). The available estimate of duckling survival (0.67) is from a number of observations over two years on Kigigak Island (Flint et al. 2016) and is considered high, likely due to the small sample size. To simplify the model structure, rather than using this data explicitly in the IPM, it was used to develop an informed prior in the final model for the composite variable $\mu_f$. This variable scales fecundity to fit the observed count and survival data. Nest success data was used as a covariate on recapture probability, see below.  
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-nest
+#| fig-cap: "Annual estimates of spectacled eider nest survival (A) and clutch size (B) on Kigigak Island, 1992-2015 (from Gabrielson and Spragens 2013; Moore and Sowl 2015). Error bars represent &plusmn;1 SE."
+ns.plot <- ggplot(fecund.param, aes(x = year, y = ns.obs.gs)) + 
+  geom_point() +
+  geom_errorbar(aes(ymin = ns.obs.gs - sigma.ns.obs, ymax = ns.obs.gs + sigma.ns.obs), width = 0.5) +
+  labs(y = "Observed Nesting Success", x = "Year") + 
+  theme_classic()
+cs.plot <- ggplot(fecund.param, aes(x = year, y = cs.obs.gs)) +
+  geom_point() + 
+  geom_errorbar(aes(ymin = cs.obs.gs - cs.obs.se, ymax = cs.obs.gs + cs.obs.se), width = 0.5) + 
+  labs(y = "Observed Clutch Size", x = "Year") +
+  theme_classic()
+cowplot::plot_grid(ns.plot, cs.plot, labels = "AUTO")
+ggsave("figures/nest.svg")
+ggsave("figures/nest.png")
+ggsave("figures/nest.pdf")
+   
+```
+
+Mark-recapture efforts were conducted on Kigigak Island from 1992-2015, 2019, and 2021-2026 and the resultant capture history data is available as part of the [Dryad repository](https://datadryad.org/stash/dataset/doi:10.5061/dryad.s1c5m5k) from Christie et al. (2018) and from the Fairbanks Ecological Services Field Office for 1992-2026 (Dan Rizzolo, *pers. comm.*). Females were marked as ducklings or as breeding adults. All birds initially marked as adults were assumed to be three years old or greater. One year old and two year old non-breeders are unobserved states in the survival analysis. 
+
+Environmental conditions hypothesized to have potential impacts to spectacled eider population resilience include lead exposure on the breeding grounds (Flint et al. 2016) and sea ice extent in the primary overwintering location south of Saint Lawrence Island (Christie et al. 2018). Lead exposure is thought to be of particular importance to the YKD population, due to the relatively high human population density and hunting pressure exerted there. Both are expected to decline going forward, with positive effects of the decline in lead on eider survival and uncertain effects of declining sea ice. The rate of decline for both factors is unknown. For lead, uncertainty is due to unknown future deposition rates on the breeding grounds and uncertainty in the rate that lead becomes unavailable to eiders. For sea ice extent, uncertainty is due to which future climate scenario will be realized and the annual stochastic variations in sea ice extent. These are included in the model structure and proposed variants in the future status of these variables are explored in the PVA as alternative scenarios. 
+
+The probability of lead exposure on the YKD, defined as blood Pb >0.2 ppm, in the breeding female population at time of hatch from 1994-1999 was estimated in Flint et al. (2016) as 0.118. The model linked observed lead exposure rates at point locations to the distance to villages by land or waterways and extrapolated the observe relationship spatially across the YKD. Using this value as a baseline, $\theta_0$, we assume that the spatial distribution of breeding birds and lead deposition is proportionately constant throughout time. In alternative scenarios considered for the YKD population, three future lead exposure curves are modeled by varying the year at which new lead deposition on the YKD ceases, presumably through management action (2008, 2026, or remaining constant), and assuming a 10 year decay rate in the availability of lead, such that $\theta_t = (\theta_0)^{dt}$ where $\theta$ is the exposure rate and $d$ is the decay rate (Flint et al. 2016; Figure 5). A fourth scenario, to model current conditions, proposes declining lead levels from 2008-2026 and constant levels thereafter for future projections. Priors are declared for $\theta_0$ and $d$ to reflect the uncertainty in both variables. By asserting that all difference in adult survival between Kigigak Island and Kashunuk was due to differential lead exposure rates, Flint et al. (2016) estimated adult survival with and without exposure and found that survival with exposure was reduced by approximately one-half. A prior is declared for this effect, $\kappa$, accounting for sampling variance. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-lead
+#| fig-cap: "Population-level lead exposure rates asserted in the spectacled eider PVA assuming a 10-year half life of lead availability in the habitat and varying times at which new lead deposition in the environment ceases."
+lead.exposure <- read.csv("input_data/lead.exposure.csv", header = T)
+lead.exp.long <- lead.exposure %>%
+  gather(scenario, exposure, -year)
+lead.exp.long$scenario[lead.exp.long$scenario == "const.exp"] <- "Constant"
+lead.exp.long$scenario[lead.exp.long$scenario == "exp.2008"] <- "2008"
+lead.exp.long$scenario[lead.exp.long$scenario == "exp.2026"] <- "2026"
+lead.exp.long$scenario[lead.exp.long$scenario == "current.exp"] <- "Current"
+ggplot(lead.exp.long, aes(x = year, y = exposure, col = scenario)) +
+  geom_point(size = 1.5) + 
+  geom_line(linewidth = 1.5) + 
+  labs(y = "Lead Exposure Rate", x = "Year") +
+  theme_classic(base_size = 16) +
+  theme(legend.title = element_blank()) + 
+  theme(legend.position = c(0.8, 0.7)) +
+  scale_color_manual(values = c("grey60", "grey40", "black", "grey80"))
+ggsave("figures/lead.svg")
+ggsave("figures/lead.png")
+ggsave("figures/lead.pdf")
+
+```
+
+```{r include = FALSE}
+ext.sea.ice <- read.csv("input_data/extreme.sea.ice.csv", header = T) |>
+   filter(year >= 1980 & year <= 2026)
+ice.years.obs <-  readxl::read_xlsx("input_data/sea_ice_vars_1979_2025.xlsx") |>
+  select(year = year_winter, ice.obs = ws_count_sic_ge95)  |>
+  filter(year >= 1979 & year <= 2025)
+```
+
+Observed extreme sea-ice days (>95% coverage) in the overwintering area were updated through the 2024–25 winter (`sea_ice_vars_1979_2025.xlsx`) **[insert description of new ice pulls, received from Dan; Dan is this correct?]**. As in Christie et al. (2018), future estimates of extreme ice days relative to RCP4.5 and RCP8.5 climate scenarios are considered in the PVAs for the YKD and ACP populations. However, the model averaged predictions of extreme ice days under either climate scenario exhibit much less inter-annual variability (RCP4.5: $\sigma^2$ = `r round(var(ext.sea.ice$ice.RCP4.5), 2)` and RCP8.5: $\sigma^2$ = `r round(var(ext.sea.ice$ice.RCP8.5), 2)`) than the observed record ($\sigma^2$ = `r round(var(ice.years.obs$ice.obs), 2)`; 1980-2026). To simulate future ice conditions with inter-annual variability more consistent with the observed record, we fit the observed data to the climate scenario estimates using a negative binomial regression, which models over-dispersed error scaling with the mean. The negative-binomial size (dispersion) parameter from each scenario was: RCP4.5 = 3.46 and RCP8.5 = 3.40. For modeling the current conditions, we fit an intercept-only model, which gave a dispersion parameter of 3.33. We use this distributional assumption to draw estimates of future extreme sea ice conditions (@fig-ice) based on the model averaged predictions. The covariate is standardized before use in the linear models for survival and breeding propensity.
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-ice
+#| fig-cap: "RCP4.5 (A) and RCP8.5 (B) extreme sea ice day data generation. Observed (black) and RCP model-averaged estimate (dark grey) of extreme sea ice days in the overwintering area. Light grey lines represent random draws from the RCP4.5 (A) and RCP8.5 (B) model averaged estimates using a negative binomial distribution with dispersion parameter 3.46 and 3.4, respectively."
+ice.years.model <- read.csv("input_data/extreme.sea.ice.csv", header = T) |>
+  filter(year >= 1988 & year <= 2080)
+
+sea.ice <- readxl::read_xlsx("input_data/sea_ice_vars_1979_2025.xlsx") |>
+  select(year_winter, ws_count_sic_ge95) |>
+  filter(year_winter >= 1987) |> #starting ice data in 1987 because fecundity 
+                                 # depends on ice experienced in t - 1, 
+                                 # makes survival depend on ice at t+1, 
+                                 # see code above
+  rename(year = year_winter, ice.obs = ws_count_sic_ge95) |>
+  mutate(year = year + 1)
+ice.years.model$ice.obs[1:nrow(sea.ice)] <- sea.ice$ice.obs
+
+# 4.5 fig
+ice.proj4.5 <- matrix(NA, nrow = nrow(ice.years.model), ncol = 50)
+set.seed(5)
+for (i in 1: nrow(ice.years.model)){
+  for (j in 1:50){
+    ice.proj4.5[i,j] <- rnbinom(1, mu = ice.years.model$ice.RCP4.5[i], size = 3.46)
+  }
+}
+
+ice.proj4.5[1:37,] <- NA
+
+ice.proj4.5 <- as.data.frame(ice.proj4.5)
+ice.proj4.5 <- cbind(ice.proj4.5, ice.years.model[,c(1,2,4)])
+ice.proj4.5 <- ice.proj4.5 %>%
+  rename(Zice.obs = ice.obs, Zice.RCP4.5 = ice.RCP4.5)
+ice.proj.fig4.5 <- ice.proj4.5 %>%
+  gather(ice.proj.sim, ext.days, -year)
+
+ice.plot4.5 <- ggplot(ice.proj.fig4.5, aes(x = year, y = ext.days, col = ice.proj.sim)) +
+  geom_line() + 
+  labs(x = "Year", y = "RCP4.5") +
+  ylim(0, 100) +
+  theme_classic(base_size = 16) + 
+  theme(legend.position = "none") +
+  scale_color_manual(values = c(rep("grey85", 50), "black", "grey40")) + 
+  scale_size_manual(values = c(rep(0.5, 50), 5, 2))
+
+# 8.5 fig
+ice.proj8.5 <- matrix(NA, nrow = nrow(ice.years.model), ncol = 50)
+set.seed(5)
+for (i in 1: nrow(ice.years.model)){
+  for (j in 1:50){
+    ice.proj8.5[i,j] <- rnbinom(1, mu = ice.years.model$ice.RCP8.5[i], size = 3.4)
+  }
+}
+
+ice.proj8.5[1:37,] <- NA
+
+ice.proj8.5 <- as.data.frame(ice.proj8.5)
+ice.proj8.5 <- cbind(ice.proj8.5, ice.years.model[,c(1,3,4)])
+ice.proj8.5 <- ice.proj8.5 %>%
+  rename(Zice.obs = ice.obs, Zice.RCP8.5 = ice.RCP8.5)
+ice.proj.fig8.5 <- ice.proj8.5 %>%
+  gather(ice.proj.sim, ext.days, -year)
+
+ice.plot8.5 <- ggplot(ice.proj.fig8.5, aes(x = year, y = ext.days, col = ice.proj.sim)) +
+  geom_line() + 
+  labs(x = "Year", y = "RCP8.5") +
+  ylim(0, 100) +
+  theme_classic(base_size = 16) + 
+  theme(legend.position = "none") +
+  scale_color_manual(values = c(rep("grey85", 50), "black", "grey40")) + 
+  scale_size_manual(values = c(rep(0.5, 50), 5, 2))
+
+cowplot::plot_grid(ice.plot4.5, ice.plot8.5, nrow = 2, labels = "AUTO", label_x = 0.15)
+ggsave("figures/ice.svg")
+ggsave("figures/ice.png")
+ggsave("figures/ice.pdf")
+```
+
+## Expert Elicitation
+Several model parameters required expert elicitation, as there is no data currently available to inform their estimates. We followed the IDEA protocol outlined in Hemmings et al. (2018) to gather the necessary quantitative data. Seven experts with a collective breadth of knowledge in sea duck ecology, particularly eiders, and in demographic modeling began the exercise and six ultimately completed all steps. We developed ten questions concerning survival differences between the YKD and ACP populations, juvenile and adult local dispersal, winter sea ice effects on breeding propensity, the carrying capacity of the YKD and ACP populations, two year old maturation probability, and count survey interannual variability within observers. For each question, respondents were asked to give a minimum plausible value, maximum plausible value, most likely plausible value, and their confidence in the interval containing the true value. These responses were aggregated, summarized, and presented to the experts for a group discussion focused on ensuring consistent interpretation of the questions posed and allowing experts to communicate information or research that informed individual responses with the rest of the group. No attempt at consensus was made. Following this discussion, experts were given a second opportunity to respond to the questions, if they felt that revision was warranted. This second round of responses were again aggregated, summarized, and, ultimately, used to develop informed priors for model parameters. Details on the questions, responses, and translation of responses into informed priors is available in an accompanying Appendix C of the 2021 Species Status Assessment (USFWS 2021). Details of priors used, including changes from 2021, are below. 
+
+## Model Structure
+The IPM is comprised of four parts or submodels: (1) a latent population projection or process model for the female eider population based on the Lefkovitch transition matrix described above, (2) a fecundity model informed by productivity studies on Kigigak Island, (3) survival estimates from a multi-state mark-recapture model based on banded adults and ducklings on Kigigak Island, and (4) an observation model that relates population projections to observed count data. In addition, all parameters in each submodel have prior distributions which are an important part of the model. For those submodels that have data, there is a likelihood of the data, given the parameter values. For all parameters, we used informed priors that were based on other published work using this same data, our own estimates obtained outside of the IPM, expert elicitation, or biological plausibility on the parameter scale.  
+
+### Yukon-Kuskokwim Delta Population
+
+*Process Submodel.* The process model is a simple age- and stage- (breeding status) structured matrix projection model for the female population based on the Lefkovitch transition matrix, $\symbfit{A}$ above. The female population in year $t$ is 
+$$\symbfit{N}_{t+1} = \symbfit{A}_t \symbfit{N}_t,$$
+where $\symbfit{A}_t$ has year-specific elements determined from the survival and fecundity models below and $\symbfit{N}_t$ is a vector of female population size for each age and stage (Figure 1),
+$$\symbfit{N}_t = \left[\begin{matrix}
+n_{1,t}  \\
+n_{2nB,t} \\
+n_{2B,t} \\
+n_{3+,t}\end{matrix}\right].$$
+The female breeding population is then defined as $n_{B,t} = n_{2B,t} + n_{3+,t}$. The process model is used to determine the likelihood for the count model, describe below.  
+
+*Fecundity Submodel.* The annual per capita rate of fecundity is modeled relative to the estimated survival of immature females adjusted for juvenile dispersal from Kigigak Island to the wider YKD ($\phi_0^*$) and as a function of the female breeding population size, $n_{B,t}$, and breeding propensity, $BP_t$, at time *t*
+$$log(f_t) = \log(\mu_f) + log(\phi_{0,t}^*) - \beta_{DDf}*n_{B,t}/1000 + log(BP_t)$$
+where $\mu_f$ is the average number of female offspring surviving to day 30 after hatch with a prior given on the log scale
+$$\log(\mu_f) ~ \sim Normal(-0.47, 0.1).$$
+The prior for $\log(\mu_f)$ is consistent with an average nest success 0.65, female clutch size 2.4, and duckling survival 0.4 as observed in the Kigigak Island fecundity data time series. 
+
+The estimated survival of immature females ($\phi_{0,t}^*$), accounting for local dispersal, is
+$$\phi_{0,t} + (1-\phi_{0,t})*\omega_J$$
+where $\phi_{0,t}$ is estimated from the mark-recapture data and the prior for natal site dispersal, $\omega_J$, was obtained from expert elicitation as
+$$\omega_J ~ \sim Beta(1,9).$$
+The density-dependence prior on fecundity was revised from the 2021 SSA. The 2026 model places the prior directly on the density-dependence coefficient,
+
+$$\beta_{DDf} \sim \text{Gamma}(3.1,\,251.648),$$
+
+replacing the 2020 formulation, which placed a normal prior on $\log(\beta_{DDf}^{-1})$. The density term also now enters on a per-1000-female scale (the linear predictor uses $n_{B,t}/1000$; see *Survival Submodel*). The above prior was informed from expert elicitation of the carrying capacity on the breeding grounds and using the deterministic Leftovich projection model to find the prior distribution for density-dependence consistent with the elicited carry capacity (see Appendix C in USFWS 2021 and `DDpriorsEO.R`). Specifically, the prior is consistent with a carrying capacity of approximately 20,000 breeding females at the prior mean and gives a prior distribution from 8,500 to 37,500 at the 10th and 90th percentiles, respectively. 
+
+We modeled density-dependence as a function of the breeding population although, mechanistically, density-dependence is expected to be exerted primarily in the overwintering area as a function of the total global population of spectacled eiders. There is currently no reliable data on the world  population size or its trend. We initially attempted to model this unobserved population as a latent state in this IPM to scale density-dependence to the total (unobserved) population size. However, without data to suggest the trend in global population counts differed from the breeding population or strong priors that imply different demographic rates, the total population changed proportionally with the observed population. Therefore, modeling density-dependence as a function of the breeding population size is a simplification that assumes the global and local populations are synchronous so that each increase to a world equilibrium population size (carrying capacity) or, alternatively, the wolrd population decreases and the YKD population increases as it is released from density-dependent regulation. Without data on the world population these two patterns cannot be distinguished, so modeling density-dependence based on breeding population size represent a phenomenological way to incorporate population size regulation and not a mechanistic belief that regulation occur on the breeding area. It is also possible that behavioral or other mechanisms produce density-dependence on the breeding area, although expert felt this was unlikely for this species. 
+
+Breeding propensity of mature females in year $t$ is modeled on the logit scale as a function of an intercept, extreme winter sea-ice days at $t-1$ (with a quadratic term reflecting the elicited functional shape), and a random year effect:
+
+$$\text{logit}(BP_t) = \beta_{BP,0} + \beta_{BP,ice}\,ice_{t-1} + \beta_{BP,ice^2}\,ice_{t-1}^2 + \epsilon_{BP,t}.$$
+
+In the 2026 model the three breeding-propensity coefficients are given a joint multivariate-normal prior rather than three independent univariate priors:
+
+$$\symbfit{\beta}_{BP} = (\beta_{BP,0},\,\beta_{BP,ice},\,\beta_{BP,ice^2}) \sim \text{MVN}(\symbfit{\mu}_{BP},\,\symbfit{\Sigma}_{BP}),$$
+
+with
+
+$$\symbfit{\mu}_{BP} = (1.281,\,-0.144,\,-0.072),$$
+
+$$\symbfit{\Sigma}_{BP} = \begin{bmatrix} 0.312 & -0.047 & -0.067 \\ -0.047 & 0.040 & 0.019 \\ -0.067 & 0.019 & 0.020 \end{bmatrix}.$$
+
+Random year effects are modeled as $\epsilon_{BP,t} \sim \text{Normal}(0,\sigma_{BP})$, $\sigma_{BP} \sim \text{Uniform}(0,1)$.
+
+This joint prior was derived from the revised expert-elicitation analysis for breeding propensity (`BP_prior_EO_revised.R`) and preserves the elicited correlations among the intercept and the linear and quadratic ice effects, which the independent priors used in 2020 did not. This parameter set is consistent with a breeding propensity around 0.90 (80% CI: 0.75-0.92) when there are 60 winter extreme sea ice days, declining to 0.78 (80% CI: 0.50-1) when there are around 35 winter extreme sea ice days and to 0.72 (80% CI: 0.46-0.93) when there are 85 days of extreme sea ice. There is no direct likelihood for the fecundity model. All information is expressed through the priors or through the likelihood in the survival model for $\phi_{0,t}$.   
+
+*Survival Submodel.* The mark-recapture data is summarized in an m-array format in the IPM and modeled using a multi-state survival framework. Ducklings, two year old breeding, and three year or older females are directly observed; one and two year old non-breeding females are unobserved states. Informed priors are asserted for $\mu_{phi_a}$ and $\mu_{phi_0}$ based on a multi-state survival model fit outside of the IPM. 
+
+The central revision for 2026 is that the mark–recapture series now spans a continuous run of occasions (1992–2025) that includes years with no resighting effort. To accommodate these gap years without breaking the continuous survival series, detection in the observation array is multiplied by a binary resighting-effort indicator, 
+
+$$p^{\text{eff}}_t = p_t \cdot \mathbb{1}[\text{effort}_t],$$
+
+so that the realized detection probability entering the m-array cell probabilities (states 4 and 5, the only observable states) are forced to zero in no-effort years while survival continues to operate normally across those years. Effort was absent in 2016, 2017, 2018, and 2020; in these years the affected probability mass of the multinomial likelihood is routed automatically into the "not resighted" category of the multistate m-array. Survival across gap years is identified through the product of year-specific survival terms rather than year by year.
+
+Extensive simulation validation (detailed in `CMR_component/CMR_simulation`) showed that in years with genuinely low but nonzero detection, detection in the immediately following year becomes weakly identified and is biased toward the low-detection year's value. The effect is local (decaying within roughly one year) and was confirmed as a property of the model/data — not a coding artifact of the m-array — via a simulation cross-check against an independently coded individual-encounter-history model. Whether it reflects a genuine statistical property or a shared specification detail was not fully resolved, but it is well-localized and minor, and the IPM's count data provide partially independent information on abundance and survival that may mitigate it.
+
+Two parameters that were previously supplied by expert elicitation are, in the 2026 model, given informed priors derived from the standalone multistate survival model, because simulation work (see `CMR_component/CMR_simulation`) confirmed they are identifiable from the mark–recapture data, two-year-old maturation probability ($\alpha$) and mean resight probability ($\mu_p$). In addition, $\mu_{\phi_0}$ and $\mu_{\phi_a}$ were both updated from the standalone mark-recapture refit on the extended (1992–2025) encounter series.
+
+As in 2020, the recapture probability, $p_t$, is a function of nesting success in year $t$, under the assumption that greater nesting success increases the likelihood of observing a previously marked female
+$$logit(p_t) = logit(\mu_p) + \beta_{ns}*nest_t + \epsilon_{p,t}$$
+where 
+$$\mu_p \sim \text{Beta}(47, 53),$$
+replacing the 2020 prior of $\text{Beta}(1,1)$, 
+
+$$\beta_{ns} ~ \sim Normal(0, 0.1)$$
+and random year effects
+$$\epsilon_{p, t} \sim ~ Normal (0, \sigma_{p})$$
+$$\sigma_{p} \sim ~ Uniform(0,1).$$
+To account for sampling error in the annual estimate of nesting success, the covariate in the model for detection probability was drawn from beta distributions using the mean and variance estimated in each year. New updates include nest success estimates from Friendly et al. (2025) for years 2019 and 2021. For years without nest success data (2016-2018, 2020, and 2022-2025), a prior roughly based on the mean and variance observed in Figure 3 of Friendly et al. (2025) was used, $\mu_p \sim \text{Beta}(39, 11)$. This is detailed in the model code. 
+
+We modeled the impacts of the number of extreme sea ice days in the overwintering area, both linear and quadratic effects (Christie et al. 2018), change in lead exposure rate, and a linear negative density-dependence effect of the female breeding population to the survival of two year old breeding and three year and older females ($\phi_a$) on the logit scale
+$$logit(\phi_{a,t}) = logit(\mu_{\phi_a}^*) + \beta_1*ice_t + \beta_2*ice_t^2 - \beta_{DD\phi}*n_{B,t}/1000 + \epsilon_{\phi_a,t}$$
+where $\mu_{\phi_a}^*$ is a mixture of the survival of breeding females exposed and unexposed to deleterious levels of lead
+$$\mu_{\phi_a}^* = [\mu_{\phi_a}*(1-\theta_t)] + [\mu_{\phi_a}*\kappa*\theta_t]$$
+$$\mu_{\phi_a} \sim \text{Beta}(84, 16),$$
+
+replacing the 2020 values $\text{Beta}(90,10)$. The dynamic of lead exposure was model as $\theta_t = 0.5^{1/\tau}\theta_{t-1}$ with the starting lead exposure rate of 
+
+$$\theta_0 ~ \sim Beta(6, 45),$$
+and the prior for lead exposure decay rate was a truncated normal with lower bound of one 
+$$\tau ~ \sim Normal(10, 3.2)T(1,).$$
+The impact of lead on survival was determined by  
+$$\kappa ~ \sim Beta(20, 20).$$
+
+The priors for the ice covariates are 
+$$\beta_1 \sim ~ Normal(0, 0.1)$$
+$$\beta_2 \sim ~ Normal(0, 0.1).$$
+The density-dependence coefficient on survival is now 
+$$\beta_{DD\phi} \sim \text{Gamma}(3.1, 251.648)$$ 
+(matching the fecundity DD prior) and enters on the per-1000-female scale. Annual random effects are 
+$$\epsilon_{\phi_a, t} \sim ~ Normal (0, \sigma_{\phi_a})$$
+$$\sigma_{\phi_a} \sim ~ Uniform(0,1).$$
+We assume that the survival of two year old non-breeders, $\phi_2$, and one year old females, $\phi_1$, are subject to the same effects of ice and density-dependence, but with no exposure to lead such that
+$$logit(\phi_{2,t}) = logit(\mu_{\phi_a}) + \beta_1*ice_t + \beta_2*ice_t^2 - \beta_{DD\phi}*n_{B,t}/1000 + \epsilon_{\phi_a,t}$$
+(note the lack of mixture term in $\mu_{\phi_{2,t}}$) and that $\phi_{1,t} = \phi_{2,t}.$
+
+Note that lead exposure is applied by breeding status rather than by age: birds on the breeding grounds — two-year-old breeders (state 4) and adults (state 5) — transition with the lead-adjusted survival $\phi_a$, whereas birds not on the breeding grounds — one-year-olds (state 2) and two-year-old non-breeders (state 3) — transition with the unexposed survival $\phi_2$ (with $\phi_1 = \phi_2$). This reflects the assumption that non-breeders are not present on the breeding grounds and are therefore not exposed to lead, while two-year-old breeders receive the same lead-adjusted survival as older breeding adults. (In the ACP model, which carries no lead term, all of these reduce to the shared baseline, see below.)
+
+In the 2026 model the ice effect on survival is shared across all post-hatch age classes and ducklings through a single pair of coefficients $(\beta_1, \beta_2)$ for the linear and quadratic ice terms; the age classes differ only in their intercepts. Therefore, duckling survival is
+
+$$\text{logit}(\phi_{0,t}) = \text{logit}(\mu_{\phi_0}) + \beta_1\,ice_{t} + \beta_2\,ice_{t}^2 + \epsilon_{\phi_0,t}.$$
+
+Sharing the ice coefficients (rather than estimating separate juvenile and adult ice effects as in 2020) was done deliberately to induce correlation in survival between ducklings and older birds arising from their shared overwintering distribution, while allowing the age-specific baseline survival levels to differ. Note that there is no density-dependence term in the survival component for $\phi_{0,t}$ as this is handled directly in the fecundity term, defined above. Priors were 
+
+$$\mu_{\phi_0} \sim \text{Beta}(20, 60),$$
+
+replacing the 2020 values $\text{Beta}(15,45).$ Random year effects are modeled as 
+$$\epsilon_{\phi_0, t} \sim ~ Normal (0, \sigma_{\phi_0})$$
+$$\sigma_{\phi_0} \sim Uniform(0,1).$$ 
+
+Priors for the maturation probability of 2 year old females, $\alpha$, was revised to 
+
+$$\alpha \sim \text{Beta}(13, 21),$$
+replacing the 2020 truncated inverse-gamma prior. In addition, $\alpha$ is treated as time-constant ($\alpha_t = \alpha$).
+
+Breeding site dispersal, $\omega_a$ were informed by expert elicitation and are given by
+ 
+$$\omega_a \sim ~ Beta(1,35).$$
+The likelihood for the mark-recapture model is 
+$$\symbfit{m}_t \sim Multinomial(\symbfit{p}_t, R_t),$$
+where $\symbfit{m}_t$ is the t-th row of a 'multistate M-array,' a matrix with a row for each initial release occasion and state, a column for each combination of recapture occasion and state, and a column of total releases never recaptured for each release occasion and state. Then, each element of the matrix is the number of recaptures in each state, including those never observed after the initial release. The vector $\symbfit{p}_t$ is a vector of probabilities of being observed at each recapture occasion in each state, and these probabilities are determined by the parameters and functions above. $R_t$ is the total number of individuals marked and released during capture occasion $t$. The total likelihood is the product over all rows of the M-array.  
+
+*Observation Submodel.* Observed population estimates from the aerial survey on the YKD are derived assuming constant detection across years and observers (Lewis et al. 2019). Therefore, we incorporated observer- and year-specific effects in the observation model. It is important to note that the estimates of Lewis et al. (2019) are based on scaling the number of birds observed from the air to the average number of nests found on the ground. Therefore, annual variation in any process that causes a different proportional relationship between birds seen from the air to nests built on the ground will cause variation in the observed counts (@fig-counts) and will be appear as year-specific variation in the detection parameter below. Such processes include traditional year-specific variation in aerial observer detection as well as nesting effort of birds present on the breeding ground or other other mechanisms. 
+
+Observed population estimates were modeled as an expectation of the observed number of females, multiplied by two to account for both sexes, 
+$$\widehat{Y_t} \sim Normal(2\mu_t, \widehat{\sigma_{y,t}})$$  
+where $\widehat{Y_t}$ is the point estimate from the YKD survey and $\widehat{\sigma_{y,t}}$ is the standard error of the estimate. This is the likelihood of the count model. The expected number of females was a function of the breeding population from the projection model, random effects due to observer, and an unobserved annual random effect due to year-specific detection variation 
+$$log(\mu_t) = log(n_{B,t}) - o_{i(t)} - d_t$$
+with $n_{B,t}$ the number of breeding females on the YKD, $o_{i(t)}$ an average log detection effect due to observer $i$, and $d_t$ a log detection effect for year $t$ that essentially acts as a source of observation variance not accounted for in the estimated $\widehat{\sigma_{y,t}}$. Priors are  
+$$o_{i(t)} \sim Normal(0, \sigma_o)$$
+$$\sigma_o \sim Gamma(1, 10).$$
+The 2026 observation model retains the observer random effect but revises the annual detection deviation $d_t$ prior to be more consistent with the expert elicitation conducted for the 2021 assessment. Rather than a truncated normal on the log scale, the 2026 model draws a latent $x_t \sim \text{Beta}(4,4)$ and maps it to a multiplicative detection deviation constrained to the 0.2–0.8 detection range:
+
+$$d_t = \log\!\Big(1 + \frac{x_t(0.8-0.2) + 0.2 - 0.5}{0.5}\Big),$$
+
+with the count expectation $\log(\mu_t) = \log(n_{B,t}) - o_{i(t)} - d_t$. The Beta(4,4) prior was set from the revised expert elicitation on within-observer interannual detection variability (`ObsPriors.R`, elicitation question 9). The observer random effect is unchanged in form, $o_{i(t)} \sim \text{Normal}(0,\sigma_o)$, $\sigma_o \sim \text{Gamma}(1,10)$, but now covers six observer levels.
+
+Finally, we specified a prior for the initial population size based on the observed estimates in 1988 and analysis of the stable age distribution of the transition matrix, above, using YKD mean parameter values: 
+$$n_{1,1} \sim Uniform(100, 300),$$
+$$n_{2nB,1} \sim Uniform(100, 350),$$
+$$n_{2B,1} \sim Uniform(100, 250),$$
+and 
+$$n_{3+,1} \sim Uniform(200, 2850).$$
+
+### Arctic Coastal Plain Population
+The ACP population is modeled with the same IPM structure as the YKD population, with the modifications below. Critically, the mark–recapture and nest-success data are the same Kigigak Island data used for the YKD model, so ACP survival and fecundity are shared with (informed by the same likelihood as) the YKD population, reflecting the belief that the two populations' demographic rates are correlated through their shared overwintering distribution. Differences are highlighted below. 
+
+*No lead submodel.* All lead-exposure structure is removed for the ACP. Adult/breeder survival omits the lead mixture term entirely:
+
+$$\text{logit}(\phi_{a,t}) = \text{logit}(\mu_{\phi_a}) + \beta_1\,ice_{t} + \beta_2\,ice_{t}^2 - \beta_{DD\phi}\,\frac{n_{B,t}}{1000} + \epsilon_{\phi_a,t},$$
+
+and the parameters $\theta_0$, $\tau$ (decay), $\kappa$, and the annual lead exposure model are absent. Only ice-based scenarios are run (RCP4.5, RCP8.5, current conditions).
+
+*Count data and timeline.* ACP indicated-breeding-bird counts are available 2007–2026. Unlike the YKD survey, the ACP survey counts are corrected for a fixed front-seat detection probability of 0.75 (SE 0.05), derived from double-observer estimates as described above. To align the count timeline with the 1992-onward mark–recapture series and the shared IPM index, the 19 pre-survey years (1988–2006) are entered as missing counts. Observation standard errors are therefore estimated (via $\text{Uniform}(800,1400)$ priors) for 1988–2006, 2020 and 2021. 
+
+*Observation submodel.* The ACP observation model uses eight observer-team levels (the YKD uses six), reflecting the ACP two-observer team structure; missing team-years are assigned the previous team. The annual detection deviation $d_t$ uses an ACP-specific latent prior and range: $x_t \sim \text{Beta}(2.8, 2.8)$ mapped multiplicatively (on the log scale) to a 0.5–1.0 detection range centered on 0.75,
+
+$$d_t = \log\!\Big(1 + \frac{x_t(1.0-0.5) + 0.5 - 0.75}{0.75}\Big),$$
+
+versus the YKD's Beta(4,4) on a 0.2–0.8 range. This reflects the higher and less variable detection of the ACP double-observer survey.
+
+*Density dependence.* The density-dependence coefficients use an ACP-specific prior, $\beta_{DDf}, \beta_{DD\phi} \sim \text{Gamma}(3.02, 158.30)$ (YKD uses $\text{Gamma}(3.1, 251.648)$), reflecting the lower elicited carrying capacity for the ACP. This prior is consistent with a carrying capacity of approximately 12,000 breeding females at the prior mean and gives a prior distribution from 6,900 to 34,000 at the 10th and 90th percentiles, respectively.
+
+*Initial population size.* ACP-specific initial-abundance priors are scaled to Amundson et al. (2019) (approximately 4,000–8,000 breeding birds assuming 0.75 detection). Note that the priors below are in females (1/2 the number of breeding birds):
+
+$$n_{1,1} \sim \text{Uniform}(250,500),$$
+$$n_{2nB,1} \sim \text{Uniform}(250,500),$$
+$$n_{2B,1} \sim \text{Uniform}(500,1000),$$
+$$n_{3+,1} \sim \text{Uniform}(1500,3000).$$
+
+*Age-specific survival priors.* The 2020 ACP subsection specified ($\mu_{\phi_0} \sim \text{Beta}(2.3,4)$, $\mu_{\phi_a} \sim \text{Beta}(26,3)$). In the 2026 model these are replaced with survival intercepts estimated from the YKD based on the Kigigak mark-recapture estimate fit outside the IPM ($\mu_{\phi_0} \sim \text{Beta}(20,60)$, $\mu_{\phi_a} \sim \text{Beta}(84,16)$), identical to YKD model. 
+
+The rationale for sharing survival intercepts across populations is based on three things: (1) this represents a model simplification, (2) the likelihood is very informative for the mark-recapture parameter; thus, a prior specification as done in the 2020 analysis produces little effect, and (3) the source of the mark–recapture data. Banding was conducted on Kigigak Island, where lead exposure is roughly half that of Kashunuk; Kigigak is thus lower-exposure than Kashunuk (though not the lowest-exposure site in the YKD) and serves as a practical low-lead baseline. The shared intercepts therefore represent baseline survival under comparatively low — but not zero — lead exposure, since the baseline still embeds Kigigak's residual (approximately half-Kashunuk) exposure. Realized YKD adult survival is reduced further below this baseline through the time-varying lead mixture term, whereas the ACP model carries no explicit lead term. ACP adult survival stays at the shared baseline and thus effectively assumes a constant, low, non-zero background exposure equal to that baseline. This locates the hypothesized YKD/ACP survival difference in the YKD's additional, time-varying lead exposure rather than in separate survival priors.
+
+Applying a low-lead (rather than lead-free) baseline to the ACP is further supported by evidence of low-level lead exposure in the ACP population (Wilson et al. 2009, Miller et al. 2016), consistent with the low constant exposure the shared baseline implies for the ACP.
+
+The above contrasts with the 2020 SSA Appendix B and the expert elicitation, where it was felt that survival on the ACP was higher than the YKD. In 2020, this belief was implemented using an informed prior on average adult survival that was higher than for the YKD. The likelihood of the mark-recapture component, however, overwhelms any difference through the priors between populations. For this reason as well as the idea than the ACP is not completely lead-free, this difference in priors was abandoned for this version.
+
+## Model Implementation and Diagnostics
+Models were run using JAGS v.4.3.1 (Plummer 2017) in the R package jagsUI v.1.6.3 (Kellner 2019) with R v.4.6.1 (R Core Team 2026) for 40,000 iterations on 4 chains with a 20,000 iteration burn-in. We monitored derived parameters that were directly needed for the population viability analysis (breeding population size), influential to the results (survival and associated parameters), or those where achieving convergence was challenging (breeding population size and some of the variance parameters). For the models presented, these parameters all converged within 20,000 iterations (Rhat $\le$ 1.1). Models were developed using the RCP4.5 ice projections and, for the YKD population, assuming lead levels began declining in 2008. 
+
+Seven models were run for the YKD population: all combinations of proposed lead exposure rates (Lead2008, Lead2026, Constant) and ice projections (RCP4.5 and RCP8.5) and one model of current conditions. Similarly, three models were run for the ACP population, varying the ice projections (RCP4.5, RCP8.5, and current conditions). All code to reproduce these results and this document can be found at [https://github.com/USFWS/SpectacledEiderPVA](https://github.com/USFWS/SpectacledEiderPVA). 
+
+
+## Quasi-extinction and Time Horizons
+As defined in the Spectacled Eider Recovery Plan (USFWS 1996), 250 adults in a breeding population constitutes quasi-extinction (QE). For the 2020 SSA, the probability of QE within the next 40 years (as of this writing 2066, approximately 5 generations) and the next 75 years (2100, approximately 5-10 generations) were identified as the derived quantities of interest from the PVA. For each of the alternative scenarios explored in the PVA, 80,000 samples were taken from the posterior distribution of the breeding population size projections ($2n_{B,t}$). To quantify the probability of QE as a function of time (the cumulative probability distribution of QE time), the year when the population projection first reaches QE, if ever, in each sample was retained and the total QE events observed before time point (e.g, before 2066 or before 2100) is expressed as a probability. 
+
+## Results and Discussion
+
+### Population trajectories
+The PVA projects population abundances to 2100, or 74 years years into the future, generating thousands of samples of the future population trajectory. For example, @fig-traj depicts simulated population trajectories for the YKD population, assuming lead decreases beginning in 2008 and ice conditions are consistent with RCP4.5 model projections. There is wide variation in the predicted trajectories, as would be expected in an stochastic population projection. Because some trajectories reach high large population size while others are much lower, the distribution of population size is very skewed at any give time point. In the trajectories of @fig-traj, extinction is not possible (population size is a continuous variable > 0), so a single trajectory can decline below the quasi-extinction threshold or even below one individual, and then recover to a large population due to stochastic variation. In the plots below of median trajectories, this variation is lost but the variation across trajectories is similar to that shown in @fig-traj. Importantly, no realized population trajectory will mimic the mean or median trajectory, so the mean or median trajectory gives a false sense of the population dynamics. For calculations of quasi-extinction, such recovery after dropping below the threshold is not allowed. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-traj
+#| fig-cap: "Breeding population size for the YKD population of spectacled eiders, assuming lead levels begin to decline in 2008 and ice conditions are consistent with RCP4.5 model predictions. Observed population sizes (open circles) and a sample (n = 100) of population model projections (light grey lines) are shown. The quasi-extinction (QE) threshold is shown by the red line."
+post_4.5 <- readRDS(file = "MS_Scenarios/YKD.L2008.4.5.rds")
+L2008.4.5dat <- post_4.5$sims.list$Nb
+L2008.4.5mean <- data.frame(post_4.5$mean$Nb)
+names(L2008.4.5mean) <- c("Nb.mean")
+L2008.4.5mean$Year <- c(1988:2100)
+
+set.seed(84)
+hold <- sample(1:nrow(post_4.5$sims.list$Nb), 100, replace = FALSE)
+#hold <- c(hold, 38997, 22130, 19609, 20876, 3167) # adding trajectories that hit QE
+L2008.4.5dat <- data.frame(t(L2008.4.5dat[hold,]))
+
+L2008.4.5dat$Year <- c(1988:2100)
+L2008.4.5fig <- L2008.4.5dat %>%
+  gather(Sim, Nb, -Year)
+L2008.4.5fig$Sim <- as.factor(L2008.4.5fig$Sim)
+
+counts.YKD.fig <- counts.YKD
+counts.YKD.fig$Nibb[counts.YKD.fig$Year == 2015] <- NA
+  
+
+ggplot(L2008.4.5fig, aes(x = Year, y = Nb/1000, col = Sim)) +
+  geom_line() + 
+  #geom_line(data = L2008.4.5mean, aes(x = Year, y = Nb.mean/1000), size = 1.1, col = "black") + 
+  geom_point(data = counts.YKD.fig, aes(x = Year, y = Nibb/1000), size = 2, shape = 1, col = "black") +
+  geom_hline(yintercept = .25, col = "red") +
+  geom_text(label = "QE", x = 2000, y = 1.2, col = "black") +
+  labs(x = "Year", y = expression(paste("YKD Breeding Population Size (", 10^{3}, ")"))) +
+  scale_y_continuous(limits = c(0, 40)) +
+  scale_color_manual(values=rep("grey80", length(L2008.4.5fig$Sim))) + 
+  theme_classic() + 
+  theme(legend.position = "none")
+ggsave("figures/traj.svg")
+ggsave("figures/traj.png")
+ggsave("figures/traj.pdf")
+```
+
+As described above, the first year when each population projection falls below 250 breeding individuals is retained to calculate the probability of quasi-extinction. As an example, @fig-extinct depicts the distribution of the year at which QE is met for the YKD population model, assuming lead declines in 2008 and ice conditions are consistent with RCP4.5 model predictions. Note that the count of QE events each year increases rapidly for the first 40 or so years, then begins to decline due to the fact that many simulations have already gone extinct in previous years and are no longer available to go extinct in the future. If the graph were to continue further into the future, there would be a long tail to the distribution that declines to zero. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-extinct
+#| fig-cap: "Distribution of year at which simulations reached quasi-extinction (QE) for the YKD population model of spectacled eiders, assuming lead levels begin to decline in 2008 and ice conditions are consistent with RCP4.5 model predictions. The figure is limited to only those simulations where QE was met."
+QE <- function (x) {
+  min(which(x <= 250))
+}
+
+YKD.L2008.4.5QE <- apply(post_4.5$sims.list$Nb, 1, QE)
+YKD.L2008.4.5QE <- ifelse(YKD.L2008.4.5QE == "Inf", 0, YKD.L2008.4.5QE)
+YKD.L2008.4.5QE.Not0 <- data.frame(YKD.L2008.4.5QE[YKD.L2008.4.5QE != 0])
+names(YKD.L2008.4.5QE.Not0) <- c("Year")
+YKD.L2008.4.5QE.Not0$Year <- YKD.L2008.4.5QE.Not0$Year + 1987 
+
+ggplot(YKD.L2008.4.5QE.Not0, aes(x = Year)) + 
+  geom_histogram(bins = 100, col = "black", fill = "white", aes()) + 
+  labs(x = "Year", y = "Simulations Reaching 250 Breeding Individuals") +
+  theme_classic() 
+ggsave("figures/extinct.svg")
+ggsave("figures/extinct.png")
+ggsave("figures/extinct.pdf")
+```
+
+The median annual expected breeding population size under each scenario for the YKD and ACP populations are depicted below (@fig-medYKD and @fig-medACP, respectively). For the YKD, constant high lead levels allow for an increasing median population size under current climate scenario (@fig-medYKD A) and give smaller median population sizes compared to scenarios where lead contamination decays with time (@fig-medYKD B and C). Counterintuitively, the scenario where lead only recently started to decay (Lead 2026) ends with a higher median population size at 2100 (@fig-medYKD B and C). This same effect occurred in the 2021 IPM, and is thought to be due to some interaction between the lead decay, density-dependence, and climate scenario. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-medYKD
+#| fig-cap: "Estimated median population projections for the YKD population under current conditions (A), RCP4.5 (B), and RCP8.5 (C)."
+post_current <- readRDS(file = "MS_Scenarios/YKD.current.rds")
+YKDcurrent.fig <- data.frame(cbind(post_current$q50$Nb, c(1988:2100)))
+names(YKDcurrent.fig) <- c("L2026.current", "Year")
+
+post_L2026_4.5 <- readRDS(file = "MS_Scenarios/YKD.L2026.4.5.rds")
+post_constant_4.5 <- readRDS(file = "MS_Scenarios/YKD.Lconst.4.5.rds")
+
+YKD4.5.fig <- data.frame(cbind(post_4.5$q50$Nb, post_L2026_4.5$q50$Nb, post_constant_4.5$q50$Nb, c(1988:2100)))
+names(YKD4.5.fig) <- c("L2008.4.5", "L2026.4.5", "constant.4.5", "Year")
+YKD4.5.fig <- YKD4.5.fig %>%
+  gather(scenario, Nb, -Year)
+YKD4.5.fig$scenario[YKD4.5.fig$scenario == "L2008.4.5"] <- "Lead 2008"
+YKD4.5.fig$scenario[YKD4.5.fig$scenario == "L2026.4.5"] <- "Lead 2026"
+YKD4.5.fig$scenario[YKD4.5.fig$scenario == "constant.4.5"] <- "Constant Lead"
+
+
+post_L2008_8.5 <- readRDS(file = "MS_Scenarios/YKD.L2008.8.5.rds")
+post_constant_8.5 <- readRDS(file = "MS_Scenarios/YKD.Lconst.8.5.rds")
+post_L2026_8.5 <- readRDS(file = "MS_Scenarios/YKD.L2026.8.5.rds")
+
+YKD8.5.fig <- data.frame(cbind(post_L2008_8.5$q50$Nb, post_L2026_8.5$q50$Nb, post_constant_8.5$q50$Nb, c(1988:2100)))
+names(YKD8.5.fig) <- c("L2008.8.5", "L2026.8.5", "constant.8.5", "Year")
+YKD8.5.fig <- YKD8.5.fig %>%
+  gather(scenario, Nb, -Year)
+YKD8.5.fig$scenario[YKD8.5.fig$scenario == "L2008.8.5"] <- "Lead 2008"
+YKD8.5.fig$scenario[YKD8.5.fig$scenario == "L2026.8.5"] <- "Lead 2026"
+YKD8.5.fig$scenario[YKD8.5.fig$scenario == "constant.8.5"] <- "Constant Lead"
+
+library(ggplot2)
+library(cowplot)
+
+# Define your unified limits variable here so it is easy to change later
+shared_y_limits <- c(0, 20) 
+
+# 1. First plot
+YKD.current.plot <- ggplot(YKDcurrent.fig, aes(x = Year, y = L2026.current/1000)) +
+  geom_line() +
+  scale_y_continuous(breaks = c(5, 10, 15), limits = shared_y_limits) + # Added limits
+  theme_classic() +
+  theme(axis.title.x = element_blank(),
+        axis.title.y = element_blank())
+   
+# 2. Second plot
+YKD4.5.plot <- ggplot(YKD4.5.fig, aes(x = Year, y = Nb/1000, linetype = scenario)) +
+  geom_line() +
+  scale_y_continuous(breaks = c(5, 10, 15), limits = shared_y_limits) + # Added limits
+  theme_classic() +
+  theme(axis.title.x = element_blank(), 
+        axis.title.y = element_blank(), 
+        legend.position = "none")  
+
+# 3. Third plot
+YKD8.5.plot <- ggplot(YKD8.5.fig, aes(x = Year, y = Nb/1000, linetype = scenario)) +
+  geom_line() +
+  scale_y_continuous(breaks = c(5, 10, 15), limits = shared_y_limits) + # Added limits
+  theme_classic() +
+  theme(axis.title.x = element_blank(), 
+        axis.title.y = element_blank(),
+        legend.title = element_blank(),
+        legend.position = "right") 
+
+# EXTRACT LEGEND
+plot_legend <- cowplot::get_legend(YKD8.5.plot)
+YKD8.5.plot <- YKD8.5.plot + theme(legend.position = "none") 
+   
+# 4. Combine into a column
+plot_column <- cowplot::plot_grid(YKD.current.plot, YKD4.5.plot, YKD8.5.plot, 
+                                  nrow = 3, labels = "AUTO", align = "v")
+
+# 5. Assemble canvas
+final_plot <- ggdraw() +
+  draw_plot(plot_column, x = 0.06, y = 0.05, width = 0.82, height = 0.95) +
+  draw_plot(plot_legend, x = 0.85, y = 0.75, width = 0.1, height = 0.2) +
+  
+  # Shared Axis Labels
+  draw_label(expression(paste("Breeding Population (", 10^{3}, ")")), 
+             x = 0.02, y = 0.52, angle = 90, vjust = 0.5) +
+  draw_label("Year", x = 0.47, y = 0.02, vjust = 0)
+
+print(final_plot)
+
+ggsave("figures/medYKD.svg")
+ggsave("figures/medYKD.png")
+ggsave("figures/medYKD.pdf")
+```
+
+For the ACP (@fig-medACP), current conditions give a slowly declining median population trajectories; whereas the median trajectory for both climate change scenarios are more stable but eventually decline. These dynamics of the median trajectory are hard to understand, reflecting that these summary statistics do not capture the differences between the scenarios. For example, much of the difference between these scenarios is due to the distributional skew in population size, as each of these scenarios have similar quasi-extinction probabilities (see below). 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-medACP
+#| fig-cap: "Estimated median population projections for the ACP population under alternative extreme winter sea ice conditions."
+ACP.4.5 <- readRDS(file = "MS_Scenarios/ACP.4.5.rds")
+ACP.8.5 <- readRDS(file = "MS_Scenarios/ACP.8.5.rds")
+ACP.current <- readRDS(file = "MS_Scenarios/ACP.current.rds")
+
+ACP.fig <- data.frame(cbind(ACP.4.5$q50$Nb, ACP.8.5$q50$Nb, ACP.current$q50$Nb, c(1988:2100)))
+#ACP.fig <- data.frame(cbind(ACP.4.5$mean$Nb, ACP.8.5$mean$Nb, ACP.current$mean$Nb, c(1988:2100)))
+names(ACP.fig) <- c("RCP4.5", "RCP8.5", "Current", "Year")
+ACP.fig <- ACP.fig %>%
+  gather(scenario, Nb, -Year)
+
+ggplot(ACP.fig, aes(x = Year, y = Nb/1000, linetype = scenario)) +
+  geom_line() +
+  labs(x = "Year", y = expression(paste("Breeding Population Size (",    10^{3}, ")"))) +
+  theme_classic() +
+  theme(legend.title = element_blank()) + 
+  theme(legend.position = c(0.8, 0.8))
+ggsave("figures/medACP.svg")
+ggsave("figures/medACP.png")
+ggsave("figures/medACP.pdf")
+
+```
+ 
+### Survival estimates
+Survival estimates from the IPM are shown in @fig-sur. For context, the survival estimates from a model without covariates fit outside the IPM are also shown in the figure. Differences between the estimates for any given year reflect the influence of the IPM and covariates. In most years, estimates are similar between the models. Notable exceptions are for years 2024 (last year of estimates coinciding with a large decrease in population counts in 2025 for the YKD [@fig-counts]) and to a lesser degree 2019 and 2020, which also coincides with a count decline for the YKD. Because the count data is missing for 2020 for the YKD, the exact point of survival decline cannot be localized between 2019 to 2021. Thus, the IPM informs the survival estimates through the count data likelihood as was the original purpose of IPMs (Besbeas et al. 2002). 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-sur
+#| fig-cap: "Survival estimates for adult spectacled eider on the YKD and ACP as estimated from an integrated population model (YKD-IPM, black bars; ACP-IPM dark gray) and as a stand-alone multi-state mark-recapture model (Independent, light gray). Differences in estimates highlight the influence of the integrated model stucture."
+
+#post_4.5  object containing YKD l2008 4.5 scenario
+# read in the same (without lead) fit outside IPM
+post_outside <- readRDS(file = "CMR_component/CMR.missing.RDS")
+
+df <- data.frame(PhiA = c(post_4.5$mean$phiA[5:37], post_outside$mean$phiA, ACP.4.5$mean$phiA[5:37]),
+                 upper = c(post_4.5$q97.5$phiA[5:37], post_outside$q97.5$phiA, ACP.4.5$q97.5$phiA[5:37]),
+                 lower = c(post_4.5$q2.5$phiA[5:37], post_outside$q2.5$phiA, ACP.4.5$q2.5$phiA[5:37]), 
+                 Year = rep(1992:2024, times = 3),
+                 Type = rep(c("YKD-IPM", "Independent", "ACP-IPM"), each = length(1992:2024))) |>
+  arrange(desc(Type)) 
+ggplot(data = df, aes(x = Year, y = PhiA, color = Type)) + 
+  geom_pointrange(aes(ymin = lower, ymax = upper), linewidth = 0.75, position =  position_dodge(width = 0.5, reverse = TRUE)) +
+  scale_x_continuous(breaks = seq(1992, 2026, by = 4)) +
+  scale_y_continuous(breaks = seq(0, 1, by = 0.1)) +
+  scale_color_manual(values = c("YKD-IPM" = "black", "Independent" = "gray75", "ACP-IPM" = "gray45")) +
+  labs(y = "Adult Survival") +
+  theme_classic() +
+  theme(legend.title = element_blank()) + 
+  theme(legend.position = c(0.2, 0.2))
+ggsave("figures/sur.svg")
+ggsave("figures/sur.png")
+ggsave("figures/sur.pdf")
+```
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-beta
+#| fig-cap: "The influence of winter ice conditions on adult survival for the YKD (A) and ACP (B). The thin black line is the effect at the posterior mean. Light gray lines are the ice effect at 100 posterior samples. Ice is standardized to zero mean and unit standard deviation."
+
+post <- post_4.5
+
+#plot posterior ice effects
+nreps <- 100
+samples <- sample(1:dim(post$sims.list$beta)[1], nreps)
+beta <- post$sims.list$beta[samples,]
+betaN <- post$sims.list$betaN[samples,]
+ice <- seq(-2, 2, length=1000)
+N <- rep(10, length=1000)
+X <- matrix(c(rep(1,length(ice)), N, ice, ice*ice), nrow = length(ice), ncol = 3, byrow = FALSE)
+mean.logit.PhiA <- qlogis(post$sims.list$mean.phiA[samples])
+PhiA <- matrix(NA, nrow = length(ice), ncol = nreps)
+for(i in 1: nreps){
+  PhiA[,i] <- plogis(mean.logit.PhiA[i] - betaN[i]*N + beta[i,1]*ice + beta[i,2]*ice*ice)
+}
+mphi <- data.frame(MPhiA = plogis(qlogis(post$mean$mean.phiA) + post$mean$beta[1]*ice + post$mean$beta[2]*ice*ice), 
+                   Ice = ice)
+df <- as.data.frame(PhiA) |> mutate(Ice = ice) |>
+  pivot_longer(1:nreps, names_to = "Rep", values_to = "PhiA")
+p1 <- ggplot(data = df, aes(x = Ice, y = PhiA, group = Rep)) + geom_line(col="lightgray") + 
+  geom_line(data = mphi, aes(x=Ice, y=MPhiA), color = "black", inherit.aes = FALSE) + 
+  ylab(NULL) + 
+  scale_y_continuous(limits=c(0.6, 1.0)) + 
+  theme_classic() + 
+  theme(aspect.ratio = 0.5)
+
+post <- ACP.4.5
+
+#plot posterior ice effects
+nreps <- 100
+samples <- sample(1:dim(post$sims.list$beta)[1], nreps)
+beta <- post$sims.list$beta[samples,]
+betaN <- post$sims.list$betaN[samples,]
+ice <- seq(-2, 2, length=1000)
+N <- rep(7.5, length=1000)
+X <- matrix(c(rep(1,length(ice)), N, ice, ice*ice), nrow = length(ice), ncol = 3, byrow = FALSE)
+mean.logit.PhiA <- qlogis(post$sims.list$mean.phiA[samples])
+PhiA <- matrix(NA, nrow = length(ice), ncol = nreps)
+for(i in 1: nreps){
+  PhiA[,i] <- plogis(mean.logit.PhiA[i] - betaN[i]*N + beta[i,1]*ice + beta[i,2]*ice*ice)
+}
+mphi <- data.frame(MPhiA = plogis(qlogis(post$mean$mean.phiA) + post$mean$beta[1]*ice + post$mean$beta[2]*ice*ice), 
+                   Ice = ice)
+df <- as.data.frame(PhiA) |> mutate(Ice = ice) |>
+  pivot_longer(1:nreps, names_to = "Rep", values_to = "PhiA")
+p2 <- ggplot(data = df, aes(x = Ice, y = PhiA, group = Rep)) + geom_line(col="lightgray") + 
+  geom_line(data = mphi, aes(x=Ice, y=MPhiA), color = "black", inherit.aes = FALSE) + 
+  ylab(NULL) + 
+  scale_y_continuous(limits=c(0.6, 1.0)) + 
+  theme_classic() + 
+  theme(aspect.ratio = 0.5)
+
+combined_grid <- plot_grid(p1, p2, ncol = 1, labels = "AUTO", label_x = 0.3)
+
+# 3. Draw the canvas and overlay the label precisely
+final_plot <- ggdraw(combined_grid) + 
+  draw_label(
+    "Adult Survival", 
+    x = 0.2,        # Places it 3% from the left edge of the entire canvas
+    y = 0.5,         # Centers it vertically across both plots
+    angle = 90,      # Rotates text to match standard y-axis orientation
+    vjust = 0.5,     # Centers text alignment vertically
+    fontface = "plain", 
+    size = 12
+  )
+
+# Display the result
+final_plot
+ggsave("figures/beta.svg")
+ggsave("figures/beta.png")
+ggsave("figures/beta.pdf")
+```
+
+The quadratic effects of ice on survival are substantially different than have been estimated previously in Christie et al. (2018) or for the 2021 SSA. Based on the current conditions model, for both the YKD and ACP populations, model estimates suggest negative effects at the posterior mean but the magnitude of the effect is much less than estimated before and the posterior probability that the effect is negative is lower than estimated previously. Specifically, the quadratic ice effect on adult survival, $\beta_2$, for the YKD had a posterior probability of `r round(post_current$f$beta[2], 2)` with a mean of `r round(post_current$mean$beta[2], 2)` and a 95% credible interval (CI) of `r paste0(round(post_current$q2.5$beta[2], 2), " - ", round(post_current$q97.5$beta[2], 2))`. For the ACP, posterior probability of a negative effect was `r round(ACP.current$f$beta[2], 2)` with a mean of `r round(ACP.current$mean$beta[2], 2)` and a 95% credible interval (CI) of `r paste0(round(ACP.current$q2.5$beta[2], 2), " - ", round(ACP.current$q97.5$beta[2], 2))`. In comparison, the previous (2021) estimates for the YKD gave a posterior probability of a negative effect at 0.66, a posterior mean of -0.039, and a 95% CI of -0.225 - 0.150; the ACP gave 0.69 posterior probability of a negative effect, a posterior mean of -0.048, and a 95% CI of -0.234 - 0.142. Note that the posterior means for the 2026 estimates are approximately one third that of the 2021 estimates, and the lower bounds of the credible intervals are about 25-30% higher than in 2021. Given this level of uncertainty and a lower magnitude of the posterior mean, there will be a substantial number of posterior simulations that are not concave down with respect to winter ice cover (@fig-beta). This will have the consequence for the PVA that as ice coverage deviates form the mean, survival can increase in many simulations (@fig-beta). This was also the case in the 2021 PVA, but here the effect is more frequent due to the new posterior. This effect is also not due to the IPM context, as the same reduction in the quadratic ice effect is apparent when the mark-recapture model is fit outside the IPM (result not shown here, but available in `CMR_component` data supplement). Thus, this uncertainty in the ice effect is true uncertainty related to the time series of ice and survival estimates, and specifically due to the new data used here (2019 to 2025). 
+
+### Population growth rate
+
+```{r include = FALSE}
+YKD.lambda <- (post_current$sims.list$Nb[,39]/post_current$sims.list$Nb[,1])^(1/39)
+
+ACP.lambda <- (ACP.current$sims.list$Nb[,39]/ACP.current$sims.list$Nb[,20])^(1/19)
+```
+The estimated average growth rate for each population is a second derived quantity of interest. This is estimated from the posterior breeding population size,
+
+$$\lambda_{t_2-t_1} = (n_{b,t_2}/n_{b,t_1})^{1/(t_2-t_1)} $$
+
+For the YKD population, average growth rate from 1988 to 2026 was `r round(quantile(YKD.lambda, 0.5), 3)`, 95% CI: `r round(quantile(YKD.lambda, 0.025), 3)` - `r round(quantile(YKD.lambda, 0.975), 3)`, reflecting a poulation that is now at or below the population in 1988 before the species was listed (@fig-counts). Across the years 2007 to 2026, the average growth rate for the ACP population was `r round(quantile(ACP.lambda, 0.5), 3)`, 95% CI: `r round(quantile(ACP.lambda, 0.025), 3)` - `r round(quantile(ACP.lambda, 0.975), 3)`, reflecting a decline from 2007 (@fig-counts2). Note that these growth rates average across the time period; thus, averaging over any dynamics within this period. This is especially important for the YKD population where there was a long increasing trend followed by a quick decrease to near the initial condition in 1988 @fig-counts. 
+
+### Quasi-extinction probability
+
+*Yukon-Kuskokwim Delta.* @tbl-qeykd summarizes the probability of quasi-extinction before 2066 (40 years in the future) and before 2100 (74 years in the future) for the YKD population under alternative ice and lead scenarios. Given the realized decline in population size since the 2021 SSA, the QE probabilities are now much larger and non-trivial (@tbl-qeykd). At 40 years in the future, QE probabilities range over climate and lead scenarios from 0.05 to 0.16; by 2100, QE probabilities range from 0.11 to 0.34. 
+
+There is a clear effect of climate scenario on QE probability as probabilities under climate change are larger than under the current conditions model, and QE was higher for the RCP 8.5 scenario than for the RCP4.5 scenario when compared across matching lead scenarios. There is also a clear effect of lead contamination on QE as all probabilities were higher than the "current conditions" scenario, where lead decay started in 2008 and then remained constant after 2026. In addition, the "constant lead" scenario, where lead contamination did not decay at all from a high baseline, had the highest extinction probability (@tbl-qeykd). The "lead 2026" scenario is puzzling as it had a very slightly lower QE probability than the "Lead 2008" scenario under both climate scenarios. It is unclear why this occurs, but it is not Markov chain Monte Carlo error and the model code was checked for various bugs but none were found. The full cumulative probability distribution for time of QE up to 2100 is given in @fig-qeykd. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: tbl-qeykd
+#| tbl-cap: "Quasi-extinction (QE) probabilities where the population declined below 250 breeding individuals before 2066 (40 years), before 2100 (74 years into the future), and the difference (probability QE occured between 2066 and 2100) for the YKD population under alternative scenarios of ice projections and lead exposure."
+
+source("QE_Prob.R")
+df <- sapply(results, `[[`, "prob_by_year")
+df <- df[c(40, 74),1:7] |> t() |> as.data.frame()
+df$Scenario <- c("Current Conditions", 
+                 "RCP 4.5 - Lead 2008", 
+                 "RCP 4.5 - Lead 2026",
+                 "RCP 4.5 - Lead Constant",
+                 "RCP 8.5 - Lead 2008", 
+                 "RCP 8.5 - Lead 2026",
+                 "RCP 8.5 - Lead Constant")
+df <- df[,c(3,1,2)] |>
+  mutate(` ` = "", .after = 2) |>
+  mutate(d = pick(4)[[1]] - pick(2)[[1]])
+kable(df, col.names = c("Scenario", "Pr(QE) at 2060", "", "Pr(QE) at 2100", "Difference"), align = c("l", "c", "c","c", "c"), 
+      digits = 2, row.names = FALSE, booktabs = TRUE)
+```
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-qeykd
+#| fig-cap: "Cummulative QE probability by year to 2100 for the YKD for each ice and lead scenario."
+
+df <- sapply(results, `[[`, "prob_by_year")
+df <- df[,1:7] |> as.data.frame() |>
+  mutate(Year = 2027:2100) |> 
+  pivot_longer(1:7, names_to = "Scenario", values_to = "Probability") |>
+  group_by(Scenario)
+
+ggplot(data = df, aes(x = Year, y = Probability, color = Scenario, linetype = Scenario)) +
+  geom_line(linewidth = 1.2) +
+  scale_linetype_discrete(labels = c("YKD.constant.4.5"="RCP 4.5 - Lead Constant",
+                                   "YKD.constant.8.5"="RCP 8.5 - Lead Constant",
+                                   "YKD.current"="Current Conditions", 
+                                   "YKD.L2008.4.5"="RCP 4.5 - Lead 2008", 
+                                   "YKD.L2008.8.5"="RCP 8.5 - Lead 2008",
+                                   "YKD.L2026.4.5"="RCP 4.5 - Lead 2026", 
+                                   "YKD.L2026.8.5"="RCP 8.5 - Lead 2026")) +
+  scale_color_viridis_d(labels = c("YKD.constant.4.5"="RCP 4.5 - Lead Constant",
+                                   "YKD.constant.8.5"="RCP 8.5 - Lead Constant",
+                                   "YKD.current"="Current Conditions", 
+                                   "YKD.L2008.4.5"="RCP 4.5 - Lead 2008", 
+                                   "YKD.L2008.8.5"="RCP 8.5 - Lead 2008",
+                                   "YKD.L2026.4.5"="RCP 4.5 - Lead 2026", 
+                                   "YKD.L2026.8.5"="RCP 8.5 - Lead 2026")) +
+  theme_classic()
+ggsave("figures/qeykd.svg")
+ggsave("figures/qeykd.png")
+ggsave("figures/qeykd.pdf")
+```
+
+
+*Arctic Coastal Plain.*  @tbl-qeacp summarizes the probability of quasi-extinction before 2066 (40 years in the future) and before 2100 (74 years in the future) for the ACP population under alternative ice scenarios. Given the realized decline in population size since the 2021 SSA, the QE probabilities are now much larger and non-trivial (@tbl-qeykd). At 40 years in the future, QE range over climate scenarios from 0.07 to 0.11; by 2100, QE probabilities range from 0.21 to 0.28. Climate scenario had a less clear effect on the ACP population (@tbl-qeacp). The RCP 4.5 scenario had a slightly lower QE probability (0.07 at 40 years) than either the current conditions or the RCP 8.5 scenario (both 0.11). The full cumulative probability distribution for time of QE up to 2100 is given in @fig-qeacp. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: tbl-qeacp
+#| tbl-cap: "Quasi-extinction (QE) probabilities where the population declined below 250 breeding individuals before 2066 (40 years), before 2100 (74 years into the future), and the difference (probability QE occured between 2066 and 2100) for the ACP population under alternative scenarios of ice projections and lead exposure."
+
+df <- sapply(results, `[[`, "prob_by_year")
+df <- df[c(40, 74),8:10] |> t() |> as.data.frame()
+df$Scenario <- c("Current Conditions", 
+                 "RCP 4.5", 
+                 "RCP 8.5")
+df <- df[,c(3,1,2)] |>
+  mutate(` ` = "", .after = 2) |>
+  mutate(d = pick(4)[[1]] - pick(2)[[1]])
+kable(df, col.names = c("Scenario", "Pr(QE) at 2060", "", "Pr(QE) at 2100", "Difference"), align = c("l", "c", "c","c", "c"), 
+      digits = 2, row.names = FALSE, booktabs = TRUE)
+```
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: fig-qeacp
+#| fig-cap: "Cummulative QE probability by year to 2100 for the ACP for each ice and lead scenario."
+
+df <- sapply(results, `[[`, "prob_by_year")
+df <- df[,8:10] |> as.data.frame() |>
+  mutate(Year = 2027:2100) |> 
+  pivot_longer(1:3, names_to = "Scenario", values_to = "Probability") |>
+  group_by(Scenario)
+
+ggplot(data = df, aes(x = Year, y = Probability, color = Scenario, linetype = Scenario)) +
+  geom_line(linewidth = 1.2) +
+  scale_linetype_discrete(labels=c("ACP.4.5"="RCP 4.5", "ACP.8.5"="RCP 8.5", "ACP.current"="Current Conditions")) +
+  scale_color_viridis_d(labels=c("ACP.4.5"="RCP 4.5", "ACP.8.5"="RCP 8.5", "ACP.current"="Current Conditions")) +
+  theme_classic()
+ggsave("figures/qeacp.svg")
+ggsave("figures/qeacp.png")
+ggsave("figures/qeacp.pdf")
+```
+
+
+### Population size
+
+Estimated population sizes for the YKD and ACP at 2066 and 2100 under all model scenarios explored are shown in @tbl-popykd and @tbl-popacp, respectively. Note that there is extreme variation for each scenario, especially for the YKD and at 2100. This is due largely to the increased extinction probability (for all scenarios) and due to the uncertain effect of ice on survival, where under some decreased ice scenarios, carrying capacity (and thus, the upper bound on population size) is increased with reduced ice. These effects increase the skew of the population size posterior at any time point due to some simulations resulting in extinction while others lead to large population size. This causes a large difference between the posterior mean and median. 
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: tbl-popykd
+#| tbl-cap: "Estimated breeding population size (posterior mean, median, and 95% CI) at 2066 and 2100 for the YKD population under alternative scenarios of ice projections and lead exposure."
+
+summarize_years_wide <- function(posteriors, years) {
+  # posteriors : named list of posterior matrices (rows = MCMC samples, cols = years)
+  # years      : vector of column indices to summarize, e.g. c(t1, t2)
+  # Returns a data frame: one row per scenario, columns = <stat>_yr<year>
+
+  stat_fun <- function(x) {
+    c(mean   = mean(x),
+      median = median(x),
+      q2.5   = quantile(x, 0.025, names = FALSE),
+      q97.5  = quantile(x, 0.975, names = FALSE))
+  }
+
+  mat <- t(sapply(posteriors, function(m) {
+    # apply stats to each requested year, then flatten to a named vector
+    s <- apply(m[, years, drop = FALSE], 2, stat_fun)  # rows = stat, cols = year
+    stats <- rownames(s)
+    out <- as.vector(s)                                 # flattens column-major
+    names(out) <- paste0(rep(stats, times = length(years)),
+                         "_yr", rep(years, each = length(stats)))
+    out
+  }))
+
+  df <- data.frame(scenario = rownames(mat), mat, row.names = NULL,
+                   check.names = FALSE)
+  df
+}
+
+# Example
+#tbl <- summarize_years_wide(posteriors, c(1, 10))
+NBresults <- summarize_years_wide(posteriors, c(79, 113))
+NBresults <- mutate(NBresults, across(2:9, round, digits = 0))
+df <- data.frame(Scenario = c("Current Conditions", 
+                 "RCP 4.5 - Lead 2008", 
+                 "RCP 4.5 - Lead 2026",
+                 "RCP 4.5 - Lead Constant",
+                 "RCP 8.5 - Lead 2008", 
+                 "RCP 8.5 - Lead 2026",
+                 "RCP 8.5 - Lead Constant", 
+                 "Current Conditions", 
+                 "RCP 4.5", 
+                 "RCP 8.5"),
+                 Mean66 = NBresults[,2], Median66 = NBresults[,3],
+                 "95%CI66" = paste0("(",NBresults[,4], " - ", NBresults[,5], ")"),
+                 Mean74 = NBresults[,6], Median74 = NBresults[,7],
+                 "95%CI74" = paste0("(",NBresults[,8], " - ", NBresults[,9], ")"))
+library(kableExtra)
+kable(df[1:7,], align = c("l", rep("c", 6)), col.names = c("Scenario", "Mean", "Median", "95% CI", "Mean", "Median", "95% CI"), 
+      booktabs = TRUE) |> 
+  kable_styling(latex_options = "hold_position") %>%
+  add_header_above(c(" " = 1, "2066 Breeding Population" = 3, "2100 Breeding Population" = 3))
+```
+
+
+```{r}
+#| echo: FALSE
+#| warning: FALSE
+#| width: "60%"
+#| fig-align: center
+#| label: tbl-popacp
+#| tbl-cap: "Estimated breeding population size (posterior mean, median, and 95% CI) at 2066 and 2100 for the ACP population under alternative scenarios of ice projections."
+
+
+kable(df[8:10,], align = c("l", rep("c", 6)), col.names = c("Scenario", "Mean", "Median", "95% CI", "Mean", "Median", "95% CI"),
+      booktabs = TRUE, row.names = FALSE) |> 
+  kable_styling(latex_options = "hold_position") %>%
+  add_header_above(c(" " = 1, "2066 Breeding Population" = 3, "2100 Breeding Population" = 3))
+```
+
+## Conclusion
+
+The main conclusions from this version of the PVA are: (1) extinction probability for both populations is much larger and non-trivial compared to 2021 due to a large decline in population size; (2) the effect of winter ice cover is less certain than previously thought (circa 2021). The uncertainty in the ice effect has major practical consequences on the population dynamics and extinction probability estimates. Because a large proportion of the posterior allows for survival to increase with deviations from the mean (historical) ice, population size can increase to large values in some future simulations, and this will tend to reduce extinction risk for any given scenario. A potential solution is to place an informed prior on the ice effects that do not allow for positive quadratic components. This would represent a modelling choice, as there is no data to inform this, and represents a departure from the model fit in 2021. There is some justification for a more informed prior for the ice effects, as was elicited from experts for breeding propensity. Such a prior sensitivity analysis has not yet been done, but if is was, the estimated extinction probabilities might be much higher than presented here. 
+
+## References
+
+::: {#refs}
+:::
+

@@ -97,6 +97,14 @@ for(i in 1:100){
   lines(c(-2.4, -1, 0, 1, 2), (c(sim0[i], sim35[i], sim60[i], sim85[i], sim110[i])), col = "red")
 }
 
+mbetas
+#[1]  1.3955989 -0.1631648 -0.1047859
+vcv
+# [,1]        [,2]        [,3]
+# [1,]  0.34960599 -0.05160496 -0.07164674
+# [2,] -0.05160496  0.03354823  0.01586702
+# [3,] -0.07164674  0.01586702  0.01898551
+
 #below is exploratory stuff, no long applicable
 # df <- data.frame(ice=rep(c(-1, 0, 1), each=100), bp=c(x3, x1, x2))
 # plot(df$ice, df$bp)
