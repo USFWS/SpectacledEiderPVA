@@ -429,8 +429,8 @@ sea.ice <- readxl::read_xlsx("input_data/sea_ice_vars_1979_2025.xlsx") |>
   rename(year = year_winter, ice.obs = ws_count_sic_ge95)
   
   # year is winter year starts in Nov ends in Apr, unlike in original data, the year for survival
-  #   and ice match up. I think!
-  # ice data does not seem to match that used for 2021 SSA, need to ask
+  #   and ice match up. 
+  # ice data does not match that used for 2021 SSA, new pull for 2026, very similar
 # ice.data <- read.csv("input_data/extreme.sea.ice.csv", header = T) |>
 #   drop_na()
 # ggplot(data=ice.data, aes(x=ice.RCP4.5, y = ice.obs)) + geom_point()
@@ -442,7 +442,7 @@ sea.ice <- readxl::read_xlsx("input_data/sea_ice_vars_1979_2025.xlsx") |>
 ice.data <- read.csv("input_data/extreme.sea.ice.csv", header = T) |>
   filter(year >= 1988) |>
   mutate(year = year -1)
-  # year is winter year (Nov - Apr) I think this data frame year is +1 relative to sea.ice
+  # year is winter year (Nov - Apr) this data frame year is +1 relative to sea.ice
   # so 1987 (year that winter starts) ice in sea.ice is 1988 (year that winter ends) in ice.data
 #swap in new ice data 1988 to 2024
 ice.data$ice.obs[ice.data$year %in% 1987:2024] <- sea.ice$ice.obs
@@ -478,11 +478,9 @@ fecund.param$ns.obs.beta <- round(fecund.param$ns.obs.alpha*(1-fecund.param$ns.o
 # Can get 2019 and 2021 from Friendly: https://doi.org/10.1093/ornithology/ukaf008
 #  Use apparent nest success, number of successful and failed nest as beta distribution parameters. 
 #  From supplemental mat. in Friendly: 2019 = 118 successful, 47 failed; 2021 = 85 succ., 17 failed
-#using the prior Beta(39, 11) as placeholder for now, looking at fig. 3 in Friendly and reported mean of 0.78
+#using the prior Beta(39, 11) for missing data, looking at fig. 3 in Friendly and r
 ns.a <- c(39, 39, 39, 118, 39, 85, 39, 39, 39)
 ns.b <- c(11, 11, 11, 47, 11, 17, 11, 11, 11)
-#Need to discuss with Dan which nest success data to use? See 2015 estimate of 
-#  Friendly vs what is in the data here (used in 2021)
 ####################################
 # from BP_prior_EO_revised, mean and VCV for BP ice covariates
 muBP <- c(1.3956, -0.1632, -0.1048)
