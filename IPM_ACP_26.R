@@ -516,10 +516,10 @@ jags.data8.5 <- list(obs.ice = ice.data$ice_8.5, nb.size = theta8.5, muBP = muBP
                      nest.obs.a = c(fecund.param$ns.obs.alpha, ns.a),
                      nest.obs.b = c(fecund.param$ns.obs.beta, ns.b),
                      K = K, BEFORE = 4, AFTER = 1)
-saveRDS(jags.data8.5, file = "MS_Scenarios/jags.data8.5.rds")
+saveRDS(jags.data8.5, file = "MS_Scenarios/jags.data.ACP.8.5.rds")
 
 # parameters monitored
-parameters <- c("Nb", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "mean.alpha", 
+parameters <- c("Nb", "Ntot[36]", "phiA", "phi0", "F", "mean.phi0", "mean.phiA", "mean.alpha", 
                 "mean.log.F", "betaN", "beta", "sigma.o", "o", "d", "mean.p", "p",
                 "sigma.phi0", "sigma.phiA", "betaBP")
 
@@ -549,7 +549,7 @@ jags.data4.5 <- list(obs.ice = ice.data$ice_4.5, nb.size = theta4.5, muBP = muBP
                      nest.obs.a = c(fecund.param$ns.obs.alpha, ns.a),
                      nest.obs.b = c(fecund.param$ns.obs.beta, ns.b),
                      K = K, BEFORE = 4, AFTER = 1)
-saveRDS(jags.data4.5, file = "MS_Scenarios/jags.data4.5.rds")
+saveRDS(jags.data4.5, file = "MS_Scenarios/jags.data.ACP.4.5.rds")
 start <- Sys.time()
 out <- jags(jags.data4.5, inits, parameters, "ACP_IPM.jags", 
                       n.chains = nc, n.burnin=nb, n.iter = ni,  
@@ -572,7 +572,7 @@ jags.data.current <- list(obs.ice = ice.data$ice_current, nb.size = theta.curren
                           nest.obs.a = c(fecund.param$ns.obs.alpha, ns.a),
                           nest.obs.b = c(fecund.param$ns.obs.beta, ns.b),
                           K = K, BEFORE = 4, AFTER = 1)
-saveRDS(jags.data.current, file = "MS_Scenarios/jags.data.current.rds")
+saveRDS(jags.data.current, file = "MS_Scenarios/jags.data.ACP.current.rds")
 start <- Sys.time()
 out <- jags(jags.data.current, inits, parameters, "ACP_IPM.jags", 
             n.chains = nc, n.burnin=nb, n.iter = ni,  

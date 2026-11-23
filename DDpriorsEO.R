@@ -262,9 +262,9 @@ for(i in 2:T){
 plot(1:T, colSums(n[3:4,]))
 # Now explore the pop size over the whole prior
 nreps = 1000
-#beta <- rgamma(nreps, 3.109273, 251.648023) #from above
+beta <- rgamma(nreps, 3.109273, 251.648023) #from above
 #beta <- (1/exp(rnorm(nreps, 7.95, 3.31)))/1000 #from original SSA
-beta <- (1/rgamma(nreps, 100000, 1))/1000 # from IMP_YKD on GitHub, was this used in 2021?
+#beta <- (1/rgamma(nreps, 100000, 1))/1000 # from IMP_YKD on GitHub, was this used in 2021?
 hist(beta, breaks = 100)
 pop <- c()
 for( j in 1:nreps){
@@ -276,6 +276,7 @@ for( j in 1:nreps){
 }
 
 hist(pop)
+quantile(pop, probs = c(0.1, 0.5, 0.9))
 hist(log(pop))
 plot(beta, pop)
 

@@ -103,3 +103,19 @@ posteriors <- list(
 )
 
 results <- lapply(posteriors, quasi_extinction, threshold = 250)
+
+#Do this for the more informed ice prior, jags results objects labeled ...ice.prior2.rds
+posteriors2 <- list(
+  YKD.current = readRDS("MS_Scenarios/YKD.current.ice.prior2.rds")$sims.list$Nb,
+  YKD.L2008.4.5 = readRDS("MS_Scenarios/YKD.L2008.4.5.ice.prior2.rds")$sims.list$Nb,
+  YKD.L2026.4.5 = readRDS("MS_Scenarios/YKD.L2026.4.5.ice.prior2.rds")$sims.list$Nb,
+  YKD.constant.4.5 = readRDS("MS_Scenarios/YKD.Lconst.4.5.ice.prior2.rds")$sims.list$Nb,
+  YKD.L2008.8.5 = readRDS("MS_Scenarios/YKD.L2008.8.5.ice.prior2.rds")$sims.list$Nb,
+  YKD.L2026.8.5 = readRDS("MS_Scenarios/YKD.L2026.8.5.ice.prior2.rds")$sims.list$Nb,
+  YKD.constant.8.5 = readRDS("MS_Scenarios/YKD.Lconst.8.5.ice.prior2.rds")$sims.list$Nb,
+  ACP.current = readRDS("MS_Scenarios/ACP.current.ice.prior2.rds")$sims.list$Nb,
+  ACP.4.5 = readRDS("MS_Scenarios/ACP.4.5.ice.prior2.rds")$sims.list$Nb,
+  ACP.8.5 = readRDS("MS_Scenarios/ACP.8.5.ice.prior2.rds")$sims.list$Nb
+)
+
+results2 <- lapply(posteriors2, quasi_extinction, threshold = 250)
